@@ -7,9 +7,14 @@
 基于 [Wails 3](https://v3.wails.io)
 
 ## 实现原理
-- 应用启动时会初始化 `ProviderRelayService`（见 `services/providerrelay.go`），在本地 `18100` 端口创建一个 HTTP 代理服务器，并在 `main.go` 中默认绑定 `:18100`。IDE 客户端（如 Claude Code、Codex）只需将 API Host 指向 `http://127.0.0.1:18100` 即可接入。
-- 代理内部只暴露与 IDE 兼容的关键端点：`/v1/messages` 转发到配置的 Claude 供应商，`/responses` 转发到 Codex 供应商；请求由 `proxyHandler` 动态挑选符合当前优先级与启用状态的 provider，并在失败时自动回退。
-- 以上流程让 IDE 看到的是一个固定的本地地址，而真实请求会被 Code Switch 透明地路由到你在应用里维护的供应商列表；更多背景可参阅 [deepwiki 设计笔记](https://deepwiki.com/search/_cda8ab3a-9ee6-48cf-8f60-24d6c1dfdf43?mode=fast)。
+
+应用启动时会初始化 在本地 18100 端口创建一个 HTTP 代理服务器, 默认绑定 :18100
+
+并自动更新 Claude Code、Codex 配置, 指向 http://127.0.0.1:18100 服务
+
+代理内部只暴露与 IDE 兼容的关键端点：/v1/messages 转发到配置的 Claude 供应商，/responses 转发到 Codex 供应商；请求由 proxyHandler 动态挑选符合当前优先级与启用状态的 provider，并在失败时自动回退。
+
+以上流程让 cli 看到的是一个固定的本地地址，而真实请求会被 Code Switch 透明地路由到你在应用里维护的供应商列表；更多背景可参阅 deepwiki 设计笔记。
 
 ## 下载
 
