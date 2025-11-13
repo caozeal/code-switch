@@ -287,7 +287,7 @@
             <div class="card-text">
               <div class="card-title-row">
                 <p class="card-title">{{ card.name }}</p>
-                <span v-if="card.level && card.level > 1" class="level-badge" :class="`level-${card.level}`">
+                <span v-if="card.level" class="level-badge" :class="`level-${card.level}`">
                   L{{ card.level }}
                 </span>
                 <button
