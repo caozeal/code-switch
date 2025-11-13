@@ -92,7 +92,7 @@ func main() {
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
-		Name:        "AI Code Studio",
+		Name:        "Code Switch",
 		Description: "Claude Code and Codex provier manager",
 		Services: []application.Service{
 			application.NewService(appservice),
@@ -187,8 +187,8 @@ func main() {
 	})
 
 	systray := app.SystemTray.New()
-	// systray.SetLabel("AI Code Studio")
-	systray.SetTooltip("AI Code Studio")
+	// systray.SetLabel("Code Switch")
+	systray.SetTooltip("Code Switch")
 	if lightIcon := loadTrayIcon("assets/icon.png"); len(lightIcon) > 0 {
 		systray.SetIcon(lightIcon)
 	}

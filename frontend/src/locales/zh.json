@@ -55,6 +55,7 @@
         "skill": "打开 Skill 列表",
         "import": "导入 cc-switch 配置"
       },
+      "versionLabel": "版本 {version}",
       "importConfig": {
         "tooltip": "导入 {providers} 个供应商 · {servers} 个 MCP 服务器",
         "success": "已导入 {providers} 个供应商与 {servers} 个 MCP 服务器",

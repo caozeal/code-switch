@@ -54,6 +54,7 @@
         "skill": "Open skill catalog",
         "import": "Import cc-switch config"
       },
+      "versionLabel": "Version {version}",
       "importConfig": {
         "tooltip": "Import {providers} providers · {servers} MCP servers",
         "success": "Imported {providers} providers and {servers} MCP servers",

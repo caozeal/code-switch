@@ -480,6 +480,9 @@
         </BaseButton>
       </footer>
       </BaseModal>
+      <footer v-if="appVersion" class="main-version">
+        {{ t('components.main.versionLabel', { version: appVersion }) }}
+      </footer>
     </div>
   </div>
 </template>
@@ -902,7 +905,12 @@ const loadProviderStats = async (tab: ProviderTab) => {
     ;(stats ?? []).forEach((stat) => {
       mapped[normalizeProviderKey(stat.provider)] = stat
     })
-    providerStatsMap[tab] = mapped
+    const hadExistingStats = Object.keys(providerStatsMap[tab] ?? {}).length > 0
+    if ((stats?.length ?? 0) > 0) {
+      providerStatsMap[tab] = mapped
+    } else if (!hadExistingStats) {
+      providerStatsMap[tab] = mapped
+    }
     providerStatsLoaded[tab] = true
   } catch (error) {
     console.error(`Failed to load provider stats for ${tab}`, error)
@@ -1302,5 +1310,12 @@ const handleImportClick = async () => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.main-version {
+  margin: 32px auto 12px;
+  text-align: center;
+  color: var(--mac-text-secondary);
+  font-size: 0.85rem;
 }
 </style>
