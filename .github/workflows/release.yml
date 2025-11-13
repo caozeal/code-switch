@@ -95,6 +95,7 @@ jobs:
 
       - name: Build Windows amd64
         run: |
+          $env:PATH += ";C:\Program Files (x86)\NSIS"
           $env:ARCH = "amd64"
           wails3 task windows:package
 
