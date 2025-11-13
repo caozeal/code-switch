@@ -101,7 +101,7 @@ func (ps *ProviderService) LoadProviders(kind string) ([]Provider, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []Provider{}, nil
+			return nil, nil
 		}
 		return nil, err
 	}

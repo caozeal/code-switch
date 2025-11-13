@@ -51,7 +51,14 @@
         "theme": "Toggle theme",
         "settings": "Open settings",
         "mcp": "Open MCP panel",
-        "skill": "Open skill catalog"
+        "skill": "Open skill catalog",
+        "import": "Import cc-switch config"
+      },
+      "importConfig": {
+        "tooltip": "Import {providers} providers · {servers} MCP servers",
+        "success": "Imported {providers} providers and {servers} MCP servers",
+        "empty": "Everything from cc-switch is already in sync",
+        "error": "Failed to import cc-switch config"
       },
       "providers": {
         "requests": "Requests",

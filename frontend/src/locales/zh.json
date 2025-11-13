@@ -52,7 +52,14 @@
         "theme": "切换主题",
         "settings": "打开设置",
         "mcp": "打开 MCP 面板",
-        "skill": "打开 Skill 列表"
+        "skill": "打开 Skill 列表",
+        "import": "导入 cc-switch 配置"
+      },
+      "importConfig": {
+        "tooltip": "导入 {providers} 个供应商 · {servers} 个 MCP 服务器",
+        "success": "已导入 {providers} 个供应商与 {servers} 个 MCP 服务器",
+        "empty": "cc-switch 中的供应商与 MCP 均已同步",
+        "error": "导入 cc-switch 配置失败"
       },
       "providers": {
         "requests": "请求数",
