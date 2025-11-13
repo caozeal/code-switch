@@ -93,19 +93,42 @@ jobs:
       - name: Generate bindings
         run: wails3 task common:generate:bindings
 
-      - name: Build Windows amd64
+      - name: Build Windows Binary
+        run: |
+          $env:ARCH = "amd64"
+          wails3 task windows:build
+        env:
+          PRODUCTION: "true"
+
+      - name: Verify Binary
+        run: |
+          if (Test-Path "bin\CodeSwitch.exe") {
+            Write-Host "✓ Binary found: bin\CodeSwitch.exe"
+            Get-Item "bin\CodeSwitch.exe" | Format-List Name,Length,LastWriteTime
+          } else {
+            Write-Host "✗ Binary not found!"
+            Write-Host "Listing bin directory:"
+            Get-ChildItem bin -ErrorAction SilentlyContinue
+            exit 1
+          }
+
+      - name: Create NSIS Installer
         run: |
           $env:PATH += ";C:\Program Files (x86)\NSIS"
-          $env:ARCH = "amd64"
-          wails3 task windows:package
+          Push-Location build\windows\nsis
+          wails3 generate webview2bootstrapper
+          $binaryPath = (Resolve-Path "..\..\..\bin\CodeSwitch.exe").Path
+          Write-Host "Binary path: $binaryPath"
+          makensis -DARG_WAILS_AMD64_BINARY="$binaryPath" project.nsi
+          Pop-Location
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-amd64
           path: |
-            bin/codeswitch-amd64-installer.exe
-            bin/codeswitch.exe
+            bin/CodeSwitch-amd64-installer.exe
+            bin/CodeSwitch.exe
 
   create-release:
     name: Create Release
@@ -127,8 +150,8 @@ jobs:
           mkdir -p release-assets
           cp artifacts/macos-arm64/codeswitch-macos-arm64.zip release-assets/
           cp artifacts/macos-amd64/codeswitch-macos-amd64.zip release-assets/
-          cp artifacts/windows-amd64/codeswitch-amd64-installer.exe release-assets/
-          cp artifacts/windows-amd64/codeswitch.exe release-assets/
+          cp artifacts/windows-amd64/CodeSwitch-amd64-installer.exe release-assets/
+          cp artifacts/windows-amd64/CodeSwitch.exe release-assets/
           ls -lh release-assets/
 
       - name: Create Release
