@@ -220,7 +220,8 @@
         "startup": "Started when logged in",
         "theme": "Theme mode",
         "heatmap": "Show dashboard heatmap",
-        "homeTitle": "Show home title"
+        "homeTitle": "Show home title",
+        "autoStart": "Launch at login"
       },
       "subLabel": {
         "sb_assistant_access": "Accessibility permission is required to operate clipboard contents",
