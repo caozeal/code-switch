@@ -1555,8 +1555,8 @@ const handleImportClick = async () => {
   right: 0;
   max-height: 280px;
   overflow-y: auto;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  background: var(--mac-surface);
+  border: 1px solid var(--mac-border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 50;
@@ -1564,6 +1564,7 @@ const handleImportClick = async () => {
 }
 
 :global(.dark) .level-select-options {
+  background: var(--mac-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -1579,21 +1580,21 @@ const handleImportClick = async () => {
 
 .level-option:hover,
 .level-option.active {
-  background: var(--color-bg-tertiary);
+  background: var(--mac-surface-strong);
 }
 
 .level-option.selected {
-  background: var(--color-accent-subtle);
+  background: color-mix(in srgb, var(--mac-accent) 12%, transparent);
   font-weight: 500;
 }
 
 .level-option .level-name {
   flex: 1;
   font-size: 14px;
-  color: var(--color-text-primary);
+  color: var(--mac-text);
 }
 
 .level-option.selected .level-name {
-  color: var(--color-accent);
+  color: var(--mac-accent);
 }
 </style>
