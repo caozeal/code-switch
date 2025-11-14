@@ -45,40 +45,6 @@
         </svg>
       </button>
       <button
-        v-if="showImportButton"
-        class="ghost-icon"
-        :data-tooltip="importButtonTooltip"
-        :disabled="importBusy"
-        @click="handleImportClick"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" :class="{ rotating: importBusy }">
-          <path
-            d="M12 4v9"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-          <path
-            d="M8.5 10.5l3.5 3.5 3.5-3.5"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-          <path
-            d="M5 19h14"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-        </svg>
-      </button>
-      <button
         class="ghost-icon"
         :data-tooltip="t('components.main.controls.settings')"
         @click="goToSettings"
@@ -287,14 +253,17 @@
             <div class="card-text">
               <div class="card-title-row">
                 <p class="card-title">{{ card.name }}</p>
-                <button
+                <span
                   v-if="card.officialSite"
                   class="card-site"
-                  type="button"
+                  role="button"
+                  tabindex="0"
                   @click.stop="openOfficialSite(card.officialSite)"
+                  @keydown.enter.stop.prevent="openOfficialSite(card.officialSite)"
+                  @keydown.space.stop.prevent="openOfficialSite(card.officialSite)"
                 >
                   {{ formatOfficialSite(card.officialSite) }}
-                </button>
+                </span>
               </div>
               <!-- <p class="card-subtitle">{{ card.apiUrl }}</p> -->
               <p
@@ -512,8 +481,6 @@ import { fetchCurrentVersion } from '../../services/version'
 import { fetchAppSettings, type AppSettings } from '../../services/appSettings'
 import { getCurrentTheme, setTheme, type ThemeMode } from '../../utils/ThemeManager'
 import { useRouter } from 'vue-router'
-import { fetchConfigImportStatus, importFromCcSwitch, type ConfigImportStatus } from '../../services/configImport'
-import { showToast } from '../../utils/toast'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -560,28 +527,6 @@ const showHomeTitle = ref(true)
 const mcpIcon = lobeIcons['mcp'] ?? ''
 const appVersion = ref('')
 const hasUpdateAvailable = ref(false)
-const importStatus = ref<ConfigImportStatus | null>(null)
-const importBusy = ref(false)
-
-const showImportButton = computed(() => {
-  const status = importStatus.value
-  if (!status) return false
-  return status.config_exists && (status.pending_providers || status.pending_mcp)
-})
-
-const importButtonTooltip = computed(() => {
-  if (!showImportButton.value) {
-    return t('components.main.controls.import')
-  }
-  const status = importStatus.value
-  if (!status) {
-    return t('components.main.controls.import')
-  }
-  return t('components.main.importConfig.tooltip', {
-    providers: status.pending_provider_count,
-    servers: status.pending_mcp_count,
-  })
-})
 
 const intensityClass = (value: number) => `gh-level-${value}`
 
@@ -859,15 +804,6 @@ const loadProvidersFromDisk = async () => {
   }
 }
 
-const refreshImportStatus = async () => {
-  try {
-    importStatus.value = await fetchConfigImportStatus()
-  } catch (error) {
-    console.error('Failed to load cc-switch import status', error)
-    importStatus.value = null
-  }
-}
-
 const refreshProxyState = async (tab: ProviderTab) => {
   try {
     const status = await fetchProxyStatus(tab)
@@ -1029,7 +965,6 @@ onMounted(async () => {
   await Promise.all(providerTabIds.map((tab) => loadProviderStats(tab)))
   await loadAppSettings()
   await checkForUpdates()
-  await refreshImportStatus()
   startProviderStatsTimer()
   startUpdateTimer()
   window.addEventListener('app-settings-updated', handleAppSettingsUpdated)
@@ -1267,51 +1202,9 @@ const onTabChange = (idx: number) => {
   }
 }
 
-const handleImportClick = async () => {
-  if (importBusy.value) return
-  importBusy.value = true
-  try {
-    const result = await importFromCcSwitch()
-    importStatus.value = result?.status ?? null
-    const importedProviders = result?.imported_providers ?? 0
-    const importedMCP = result?.imported_mcp ?? 0
-    if (importedProviders > 0) {
-      await loadProvidersFromDisk()
-    }
-    if (importedProviders > 0 || importedMCP > 0) {
-      showToast(
-        t('components.main.importConfig.success', {
-          providers: importedProviders,
-          servers: importedMCP,
-        })
-      )
-    } else if (result?.status?.config_exists) {
-      showToast(t('components.main.importConfig.empty'))
-    }
-  } catch (error) {
-    console.error('Failed to import cc-switch config', error)
-    showToast(t('components.main.importConfig.error'), 'error')
-  } finally {
-    importBusy.value = false
-  }
-}
 </script>
 
 <style scoped>
-.global-actions .ghost-icon svg.rotating {
-  animation: import-spin 0.9s linear infinite;
-}
-
-@keyframes import-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .main-version {
   margin: 32px auto 12px;
   text-align: center;
