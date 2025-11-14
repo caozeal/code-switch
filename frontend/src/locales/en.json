@@ -186,6 +186,22 @@
         "authorized": "Auth",
         "go_authorized": "Auth now",
         "back": "Back to home"
+      },
+      "import": {
+        "label": "Import cc-switch data",
+        "path": "Config file: {path}",
+        "detail": "{providers} providers · {servers} MCP servers ready to import",
+        "synced": "All providers and MCP servers are already synced",
+        "cta": "Import now",
+        "syncedButton": "Up to date",
+        "importing": "Importing...",
+        "upload": "Upload JSON",
+        "uploadTitle": "Select cc-switch JSON file",
+        "confirm": "Confirm import",
+        "noFile": "No config file selected",
+        "loadError": "Failed to read selected config",
+        "clear": "Clear selection",
+        "reupload": "Upload another JSON"
       }
     },
     "mcp": {
