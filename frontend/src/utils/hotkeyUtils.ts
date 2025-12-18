@@ -17,10 +17,18 @@ export const MODIFIERS = {
 
 // 快捷键字符串 => 键码映射（mac keycode 映射）
 const keyMap: Record<string, number> = {
+  // Letters
   A: 0, B: 11, C: 8, D: 2, E: 14, F: 3, G: 5,
   H: 4, I: 34, J: 38, K: 40, L: 37, M: 46,
   N: 45, O: 31, P: 35, Q: 12, R: 15, S: 1,
   T: 17, U: 32, V: 9, W: 13, X: 7, Y: 16, Z: 6,
+  // Digits
+  '0': 29, '1': 18, '2': 19, '3': 20, '4': 21, '5': 23, '6': 22, '7': 26, '8': 28, '9': 25,
+  // Function keys
+  F1: 122, F2: 120, F3: 99, F4: 118, F5: 96, F6: 97, F7: 98, F8: 100, F9: 101, F10: 109, F11: 103, F12: 111,
+  // Others
+  SPACE: 49, ENTER: 36, BACKSPACE: 51, TAB: 48, ESC: 53,
+  UP: 126, DOWN: 125, LEFT: 123, RIGHT: 124,
 };
 
 
@@ -36,8 +44,8 @@ export function parseHotkeyString(hotkey: string): { key: number, modifier: numb
     if (modifierMap[mod]) modifier |= modifierMap[mod];
   }
 
-  const key = keyStr.toUpperCase().charCodeAt(0); // A → 65, B → 66, S → 83 ...
-  if (!key || isNaN(key)) return null;
+  const key = keyMap[keyStr.toUpperCase()];
+  if (key === undefined) return null;
 
   return { key, modifier };
 }
@@ -70,13 +78,6 @@ export function parseShortcutToHotkey(shortcut: string): { key: number, modifier
     }
   }
 
-  // const keyMap: Record<string, number> = {
-  //   A: 0, B: 11, C: 8, D: 2, E: 14, F: 3, G: 5,
-  //   H: 4, I: 34, J: 38, K: 40, L: 37, M: 46,
-  //   N: 45, O: 31, P: 35, Q: 12, R: 15, S: 1,
-  //   T: 17, U: 32, V: 9, W: 13, X: 7, Y: 16, Z: 6,
-  // };
-
   const key = keyMap[keys];
   return {
     key,
@@ -88,6 +89,7 @@ export function parseShortcutToHotkey(shortcut: string): { key: number, modifier
 const reverseKeyMap = Object.fromEntries(
   Object.entries(keyMap).map(([k, v]) => [v, k])
 );
+
 // 将 keycode 和 modifier 转换为字符串（如 40, 768 => "Cmd+Shift+K"）
 export function formatHotkeyString(key: number, modifier: number): string {
   const parts: string[] = [];
@@ -100,18 +102,11 @@ export function formatHotkeyString(key: number, modifier: number): string {
   const keyStr = reverseKeyMap[key];
   if (!keyStr) throw new Error(`Unknown keycode: ${key}`);
 
-  parts.push(keyStr.toUpperCase());
+  parts.push(keyStr);
   return parts.join('+');
 }
 
 export function formatHotkeyStringmac(keycode: number, modifiers: number): string {
-  const keyMap: Record<number, string> = {
-    0: 'A', 11: 'B', 8: 'C', 2: 'D', 14: 'E', 3: 'F', 5: 'G',
-    4: 'H', 34: 'I', 38: 'J', 40: 'K', 37: 'L', 46: 'M',
-    45: 'N', 31: 'O', 35: 'P', 12: 'Q', 15: 'R', 1: 'S',
-    17: 'T', 32: 'U', 9: 'V', 13: 'W', 7: 'X', 16: 'Y', 6: 'Z'
-  };
-
   const mods: string[] = [];
 
   if (modifiers & (1 << 8)) mods.push('Cmd');      // mac
@@ -119,7 +114,7 @@ export function formatHotkeyStringmac(keycode: number, modifiers: number): strin
   if (modifiers & (1 << 10)) mods.push('Alt');
   if (modifiers & (1 << 11)) mods.push('Control');
 
-  const key = keyMap[keycode] ?? 'Unknown';
+  const key = reverseKeyMap[keycode] ?? 'Unknown';
 
   return [...mods, key].join('+');
 }
