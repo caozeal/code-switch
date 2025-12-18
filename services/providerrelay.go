@@ -27,6 +27,8 @@ type ProviderRelayService struct {
 	addr            string
 }
 
+const maxUpstreamErrorBodyBytes = 4096
+
 func NewProviderRelayService(providerService *ProviderService, addr string) *ProviderRelayService {
 	if addr == "" {
 		addr = ":18100"
@@ -240,7 +242,17 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				i+1, len(active), provider.Name, effectiveModel)
 
 			startTime := time.Now()
-			ok, err := prs.forwardRequest(c, kind, provider, endpoint, query, clientHeaders, currentBodyBytes, isStream, effectiveModel)
+			ok, err := prs.forwardRequest(
+				c,
+				kind,
+				provider,
+				endpoint,
+				query,
+				clientHeaders,
+				currentBodyBytes,
+				isStream,
+				effectiveModel,
+			)
 			duration := time.Since(startTime)
 
 			if ok {
@@ -305,6 +317,7 @@ func (prs *ProviderRelayService) forwardRequest(
 			"reasoning_tokens":    requestLog.ReasoningTokens,
 			"is_stream":           boolToInt(requestLog.IsStream),
 			"duration_sec":        requestLog.DurationSec,
+			"error_message":       requestLog.ErrorMessage,
 		}); err != nil {
 			fmt.Printf("写入 request_log 失败: %v\n", err)
 		}
@@ -319,15 +332,13 @@ func (prs *ProviderRelayService) forwardRequest(
 
 	resp, err := req.Post(targetURL)
 	if err != nil {
+		requestLog.ErrorMessage = truncateLogValue(err.Error(), maxUpstreamErrorBodyBytes)
 		return false, err
 	}
 
 	if resp == nil {
+		requestLog.ErrorMessage = "empty response"
 		return false, fmt.Errorf("empty response")
-	}
-
-	if resp.Error() != nil {
-		return false, resp.Error()
 	}
 
 	status := resp.StatusCode()
@@ -335,10 +346,54 @@ func (prs *ProviderRelayService) forwardRequest(
 
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
 		_, copyErr := resp.ToHttpResponseWriter(c.Writer, ReqeustLogHook(c, kind, requestLog))
+		if copyErr != nil {
+			requestLog.ErrorMessage = truncateLogValue(copyErr.Error(), maxUpstreamErrorBodyBytes)
+		}
 		return copyErr == nil, copyErr
 	}
 
+	bodySnippet := strings.TrimSpace(resp.String())
+	if bodySnippet != "" {
+		requestLog.ErrorMessage = truncateLogValue(bodySnippet, maxUpstreamErrorBodyBytes)
+	} else if respErr := resp.Error(); respErr != nil {
+		requestLog.ErrorMessage = truncateLogValue(respErr.Error(), maxUpstreamErrorBodyBytes)
+	} else {
+		requestLog.ErrorMessage = fmt.Sprintf("upstream status %d", status)
+	}
 	return false, fmt.Errorf("upstream status %d", status)
+}
+
+func truncateLogValue(value string, maxBytes int) string {
+	value = strings.TrimSpace(value)
+	if value == "" || maxBytes <= 0 {
+		return ""
+	}
+	// 统一成单行，避免表格/日志页被换行撑爆。
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	value = strings.ReplaceAll(value, "\r", "\n")
+	value = strings.ReplaceAll(value, "\n", " ")
+	value = strings.TrimSpace(value)
+
+	if len(value) <= maxBytes {
+		return value
+	}
+
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return ""
+	}
+	// 以字节预算为上限，逐步累加，保证最终字符串是合法 UTF-8。
+	out := make([]rune, 0, len(runes))
+	used := 0
+	for _, r := range runes {
+		n := len(string(r))
+		if used+n > maxBytes {
+			break
+		}
+		out = append(out, r)
+		used += n
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func cloneHeaders(header http.Header) map[string]string {
@@ -426,6 +481,7 @@ func ensureRequestLogTableWithDB(db *sql.DB) error {
 		reasoning_tokens INTEGER,
 		is_stream INTEGER DEFAULT 0,
 		duration_sec REAL DEFAULT 0,
+		error_message TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`
 
@@ -440,6 +496,9 @@ func ensureRequestLogTableWithDB(db *sql.DB) error {
 		return err
 	}
 	if err := ensureRequestLogColumn(db, "duration_sec", "REAL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := ensureRequestLogColumn(db, "error_message", "TEXT"); err != nil {
 		return err
 	}
 
@@ -484,6 +543,7 @@ type ReqeustLog struct {
 	IsStream          bool    `json:"is_stream"`
 	DurationSec       float64 `json:"duration_sec"`
 	CreatedAt         string  `json:"created_at"`
+	ErrorMessage      string  `json:"error_message"`
 	InputCost         float64 `json:"input_cost"`
 	OutputCost        float64 `json:"output_cost"`
 	CacheCreateCost   float64 `json:"cache_create_cost"`

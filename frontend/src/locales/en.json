@@ -187,6 +187,7 @@
         "provider": "Provider",
         "model": "Model",
         "httpCode": "HTTP",
+        "error": "Error",
         "stream": "Stream",
         "duration": "Duration",
         "tokens": "Tokens"

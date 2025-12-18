@@ -188,6 +188,7 @@
         "provider": "供应商",
         "model": "模型",
         "httpCode": "HTTP",
+        "error": "错误",
         "stream": "传输",
         "duration": "耗时",
         "tokens": "Token 汇总"

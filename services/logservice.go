@@ -62,6 +62,7 @@ func (ls *LogService) ListRequestLogs(platform string, provider string, limit in
 			CacheReadTokens:   record.GetInt("cache_read_tokens"),
 			ReasoningTokens:   record.GetInt("reasoning_tokens"),
 			CreatedAt:         record.GetString("created_at"),
+			ErrorMessage:      record.GetString("error_message"),
 			IsStream:          record.GetBool("is_stream"),
 			DurationSec:       record.GetFloat64("duration_sec"),
 		}

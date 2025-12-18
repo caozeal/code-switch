@@ -60,6 +60,7 @@
             <th class="col-provider">{{ t('components.logs.table.provider') }}</th>
             <th class="col-model">{{ t('components.logs.table.model') }}</th>
             <th class="col-http">{{ t('components.logs.table.httpCode') }}</th>
+            <th class="col-error">{{ t('components.logs.table.error') }}</th>
             <th class="col-stream">{{ t('components.logs.table.stream') }}</th>
             <th class="col-duration">{{ t('components.logs.table.duration') }}</th>
             <th class="col-tokens">{{ t('components.logs.table.tokens') }}</th>
@@ -72,6 +73,7 @@
             <td>{{ item.provider || '—' }}</td>
             <td>{{ item.model || '—' }}</td>
             <td :class="['code', httpCodeClass(item.http_code)]">{{ item.http_code }}</td>
+            <td class="error-cell" :title="item.error_message || ''">{{ item.error_message || '—' }}</td>
             <td><span :class="['stream-tag', item.is_stream ? 'on' : 'off']">{{ formatStream(item.is_stream) }}</span></td>
             <td><span :class="['duration-tag', durationColor(item.duration_sec)]">{{ formatDuration(item.duration_sec) }}</span></td>
             <td class="token-cell">
@@ -98,7 +100,7 @@
             </td>
           </tr>
           <tr v-if="!pagedLogs.length && !loading">
-            <td colspan="8" class="empty">{{ t('components.logs.empty') }}</td>
+            <td colspan="9" class="empty">{{ t('components.logs.empty') }}</td>
           </tr>
         </tbody>
       </table>

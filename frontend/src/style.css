@@ -765,9 +765,19 @@ html.dark .mac-sidebar-item:hover {
 .logs-table .col-provider { width: 170px; }
 .logs-table .col-model { width: 150px; }
 .logs-table .col-http { width: 90px; }
+.logs-table .col-error { width: 100px; }
 .logs-table .col-stream { width: 120px; }
 .logs-table .col-duration { width: 120px; }
 .logs-table .col-tokens { width: 340px; white-space: normal; }
+
+.logs-table td.error-cell {
+  width: 100px;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--mac-text-secondary);
+  cursor: help;
+}
 
 .logs-table td.http-success {
   color: #4ade80;

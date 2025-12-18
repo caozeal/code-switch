@@ -14,6 +14,7 @@ export type RequestLog = {
   is_stream?: boolean | number
   duration_sec?: number
   created_at: string
+  error_message?: string
   total_cost?: number
   input_cost?: number
   output_cost?: number
