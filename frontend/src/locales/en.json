@@ -222,7 +222,13 @@
         "theme": "Theme mode",
         "heatmap": "Show dashboard heatmap",
         "homeTitle": "Show home title",
-        "autoStart": "Launch at login"
+        "autoStart": "Launch at login",
+        "toggleHotkey": "Window Hotkey"
+      },
+      "hotkey": {
+        "saved": "Hotkey saved and activated",
+        "error": "Failed to save hotkey",
+        "invalid": "Invalid hotkey combination"
       },
       "subLabel": {
         "sb_assistant_access": "Accessibility permission is required to operate clipboard contents",

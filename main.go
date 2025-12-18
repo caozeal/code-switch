@@ -67,6 +67,10 @@ func main() {
 	if errt != nil {
 		// 处理错误，比如日志或退出
 	}
+
+	var mainWindow *application.WebviewWindow
+	var showMainWindow func(withFocus bool)
+
 	providerService := services.NewProviderService()
 	providerRelay := services.NewProviderRelayService(providerService, ":18100")
 	claudeSettings := services.NewClaudeSettingsService(providerRelay.Addr())
@@ -79,6 +83,20 @@ func main() {
 	importService := services.NewImportService(providerService, mcpService)
 	dockService := dock.New()
 	versionService := NewVersionService()
+	hotkeyService := services.NewHotkeyService(suiService, func() {
+		if mainWindow == nil {
+			return
+		}
+		if mainWindow.IsVisible() {
+			mainWindow.Hide()
+			handleDockVisibility(dockService, false)
+			return
+		}
+		if showMainWindow == nil {
+			return
+		}
+		showMainWindow(true)
+	})
 
 	go func() {
 		if err := providerRelay.Start(); err != nil {
@@ -98,6 +116,7 @@ func main() {
 		Services: []application.Service{
 			application.NewService(appservice),
 			application.NewService(suiService),
+			application.NewService(hotkeyService),
 			application.NewService(providerService),
 			application.NewService(claudeSettings),
 			application.NewService(codexSettings),
@@ -118,6 +137,7 @@ func main() {
 	})
 
 	app.OnShutdown(func() {
+		hotkeyService.UnregisterAll()
 		_ = providerRelay.Stop()
 	})
 
@@ -126,7 +146,7 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+	mainWindow = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "Code Switch",
 		Width:     1024,
 		Height:    800,
@@ -153,7 +173,7 @@ func main() {
 		}
 		mainWindow.Focus()
 	}
-	showMainWindow := func(withFocus bool) {
+	showMainWindow = func(withFocus bool) {
 		if !mainWindowCentered {
 			mainWindow.Center()
 			mainWindowCentered = true
@@ -227,6 +247,10 @@ func main() {
 		// 	time.Sleep(time.Second)
 		// }
 	}()
+
+	if err := hotkeyService.LoadToggleHotkey(); err != nil {
+		log.Printf("WARN 启动时加载快捷键失败: %v", err)
+	}
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()

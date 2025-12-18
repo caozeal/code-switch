@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Dialogs } from '@wailsio/runtime'
 import ListItem from '../Setting/ListRow.vue'
 import LanguageSwitcher from '../Setting/LanguageSwitcher.vue'
+import ShortcutInput from '../Setting/ShortcutInput.vue'
 import ThemeSetting from '../Setting/ThemeSetting.vue'
 import { fetchAppSettings, saveAppSettings, type AppSettings } from '../../services/appSettings'
 import {
@@ -15,6 +16,8 @@ import {
   type ConfigImportResult,
   type ConfigImportStatus,
 } from '../../services/configImport'
+import { parseShortcutToHotkey, formatHotkeyStringmac } from '../../utils/hotkeyUtils'
+import { saveToggleHotkey, getToggleHotkey } from '../../services/hotkey'
 import { showToast } from '../../utils/toast'
 import BaseButton from '../common/BaseButton.vue'
 
@@ -28,9 +31,57 @@ const saveBusy = ref(false)
 const importStatus = ref<ConfigImportStatus | null>(null)
 const customImportStatus = ref<ConfigImportStatus | null>(null)
 const importBusy = ref(false)
+const toggleHotkeyString = ref('')
+const hotkeyBusy = ref(false)
 
 const goBack = () => {
   router.push('/')
+}
+
+const loadToggleHotkey = async () => {
+  hotkeyBusy.value = true
+  try {
+    const data = await getToggleHotkey()
+    toggleHotkeyString.value = data ? formatHotkeyStringmac(data.keycode, data.modifiers) : ''
+  } catch (error) {
+    console.error('failed to load toggle hotkey', error)
+    toggleHotkeyString.value = ''
+  } finally {
+    hotkeyBusy.value = false
+  }
+}
+
+const onHotkeyChange = async (shortcut: string) => {
+  if (hotkeyBusy.value) return
+  if (!shortcut) {
+    showToast(t('components.shortcut.messages.invalid'), 'error')
+    void loadToggleHotkey()
+    return
+  }
+
+  const { key, modifier } = parseShortcutToHotkey(shortcut)
+  if (key === undefined || modifier === 0) {
+    showToast(t('components.shortcut.messages.invalid'), 'error')
+    void loadToggleHotkey()
+    return
+  }
+
+  hotkeyBusy.value = true
+  try {
+    await saveToggleHotkey(key, modifier)
+    showToast(t('components.shortcut.messages.saved'))
+  } catch (error) {
+    console.error('failed to save toggle hotkey', error)
+    showToast(t('components.shortcut.messages.failed'), 'error')
+    void loadToggleHotkey()
+  } finally {
+    hotkeyBusy.value = false
+  }
+}
+
+const handleToggleHotkeyUpdate = (value: string) => {
+  toggleHotkeyString.value = value
+  void onHotkeyChange(value)
 }
 
 const loadAppSettings = async () => {
@@ -70,6 +121,7 @@ const persistAppSettings = async () => {
 
 onMounted(() => {
   void loadAppSettings()
+  void loadToggleHotkey()
   void loadImportStatus()
 })
 
@@ -302,6 +354,17 @@ const handleSecondaryImportAction = async () => {
             </label>
           </ListItem>
           <ListItem
+            :label="$t('components.shortcut.rows.openMain')"
+            :sub-label="$t('components.shortcut.descriptions.openMain')"
+          >
+            <div :class="['hotkey-input', { 'hotkey-input--disabled': hotkeyBusy }]">
+              <ShortcutInput
+                :modelValue="toggleHotkeyString"
+                @update:modelValue="handleToggleHotkeyUpdate"
+              />
+            </div>
+          </ListItem>
+          <ListItem
             v-if="showImportRow"
             :label="$t('components.general.import.label')"
             :sub-label="importDetailLabel"
@@ -373,5 +436,10 @@ const handleSecondaryImportAction = async () => {
 .import-actions .btn-outline,
 .import-actions .btn-ghost {
   padding-inline: 0.75rem;
+}
+
+.hotkey-input--disabled {
+  opacity: 0.6;
+  pointer-events: none;
 }
 </style>

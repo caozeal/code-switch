@@ -61,7 +61,8 @@ func NewSuiStore() (*SuiStore, error) {
 			INSERT INTO hotkeys (keycode, modifiers, description, target)
 			VALUES 
 				(34, 768, 'testdemo', '1'),
-				(46, 768, 'testdemo2', '2');
+				(46, 768, 'testdemo2', '2'),
+				(99, 1024, 'Toggle main window', 'toggle_window');
 		`)
 		if err != nil {
 			return nil, err

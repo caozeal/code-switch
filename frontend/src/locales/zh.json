@@ -223,7 +223,13 @@
         "homeTitle": "显示首页标题",
         "autoStart": "开机自启动",
         "automatic_up": "自动检查更新",
-        "next_up": "下次启动自动检查更新"
+        "next_up": "下次启动自动检查更新",
+        "toggleHotkey": "窗口快捷键"
+      },
+      "hotkey": {
+        "saved": "快捷键已保存并生效",
+        "error": "快捷键保存失败",
+        "invalid": "无效的快捷键组合"
       },
       "subLabel": {
         "sb_assistant_access": "需要无障碍访问权限来操作剪切板内容",
