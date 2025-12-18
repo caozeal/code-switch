@@ -32,7 +32,8 @@ const importStatus = ref<ConfigImportStatus | null>(null)
 const customImportStatus = ref<ConfigImportStatus | null>(null)
 const importBusy = ref(false)
 const toggleHotkeyString = ref('')
-const hotkeyBusy = ref(false)
+const lastSavedHotkey = ref('')
+const hotkeyBusy = ref(true)
 
 const goBack = () => {
   router.push('/')
@@ -42,10 +43,13 @@ const loadToggleHotkey = async () => {
   hotkeyBusy.value = true
   try {
     const data = await getToggleHotkey()
-    toggleHotkeyString.value = data ? formatHotkeyStringmac(data.keycode, data.modifiers) : ''
+    const formatted = data ? formatHotkeyStringmac(data.keycode, data.modifiers) : ''
+    toggleHotkeyString.value = formatted
+    lastSavedHotkey.value = formatted
   } catch (error) {
     console.error('failed to load toggle hotkey', error)
     toggleHotkeyString.value = ''
+    lastSavedHotkey.value = ''
   } finally {
     hotkeyBusy.value = false
   }
@@ -53,6 +57,8 @@ const loadToggleHotkey = async () => {
 
 const onHotkeyChange = async (shortcut: string) => {
   if (hotkeyBusy.value) return
+  if (shortcut === lastSavedHotkey.value) return
+
   if (!shortcut) {
     showToast(t('components.shortcut.messages.invalid'), 'error')
     void loadToggleHotkey()
@@ -69,6 +75,7 @@ const onHotkeyChange = async (shortcut: string) => {
   hotkeyBusy.value = true
   try {
     await saveToggleHotkey(key, modifier)
+    lastSavedHotkey.value = shortcut
     showToast(t('components.shortcut.messages.saved'))
   } catch (error) {
     console.error('failed to save toggle hotkey', error)

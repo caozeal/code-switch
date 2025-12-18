@@ -55,7 +55,9 @@ const shortcutString = computed(() => {
 })
 
 watch(shortcutString, (val) => {
-  emit('update:modelValue', val)
+  if (val !== props.modelValue) {
+    emit('update:modelValue', val)
+  }
 })
 
 const startRecording = () => {
