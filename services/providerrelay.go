@@ -250,6 +250,12 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			if finalEndpoint == "" {
 				finalEndpoint = c.Request.URL.Path
 			}
+			// Gemini 模型映射时同步更新 URL 路径中的模型名
+			if kind == "gemini" && effectiveModel != requestedModel && requestedModel != "" {
+				finalEndpoint = strings.Replace(finalEndpoint,
+					"/models/"+requestedModel+"/",
+					"/models/"+effectiveModel+"/", 1)
+			}
 			ok, err := prs.forwardRequest(
 				c,
 				kind,
@@ -299,7 +305,15 @@ func (prs *ProviderRelayService) forwardRequest(
 ) (bool, error) {
 	targetURL := joinURL(provider.APIURL, endpoint)
 	headers := cloneMap(clientHeaders)
-	headers["Authorization"] = fmt.Sprintf("Bearer %s", provider.APIKey)
+
+	// 根据提供者类型设置认证头
+	switch kind {
+	case "gemini":
+		headers["x-goog-api-key"] = provider.APIKey
+	default:
+		headers["Authorization"] = fmt.Sprintf("Bearer %s", provider.APIKey)
+	}
+
 	if _, ok := headers["Accept"]; !ok {
 		headers["Accept"] = "application/json"
 	}
