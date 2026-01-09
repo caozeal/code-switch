@@ -75,6 +75,7 @@ func main() {
 	providerRelay := services.NewProviderRelayService(providerService, ":18100")
 	claudeSettings := services.NewClaudeSettingsService(providerRelay.Addr())
 	codexSettings := services.NewCodexSettingsService(providerRelay.Addr())
+	geminiSettings := services.NewGeminiSettingsService(providerRelay.Addr())
 	logService := services.NewLogService()
 	autoStartService := services.NewAutoStartService()
 	appSettings := services.NewAppSettingsService(autoStartService)
@@ -120,6 +121,7 @@ func main() {
 			application.NewService(providerService),
 			application.NewService(claudeSettings),
 			application.NewService(codexSettings),
+			application.NewService(geminiSettings),
 			application.NewService(logService),
 			application.NewService(appSettings),
 			application.NewService(mcpService),

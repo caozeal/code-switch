@@ -65,7 +65,8 @@
         "label": "Claude proxy",
         "hostClaude": "Host Claude Code",
         "hostCodex": "Host Codex",
-        "tooltip": "Route traffic through the local relay to manage API keys centrally.",
+        "hostGemini": "Host Gemini",
+        "tooltip": "Host API access via local relay to unify management of keys and quotas.",
         "statusOn": "Managed",
         "statusOff": "Not managed"
       },

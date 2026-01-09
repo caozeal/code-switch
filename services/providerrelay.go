@@ -90,7 +90,7 @@ func (prs *ProviderRelayService) Start() error {
 func (prs *ProviderRelayService) validateConfig() []string {
 	warnings := make([]string, 0)
 
-	for _, kind := range []string{"claude", "codex"} {
+	for _, kind := range []string{"claude", "codex", "gemini"} {
 		providers, err := prs.providerService.LoadProviders(kind)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("[%s] 加载配置失败: %v", kind, err))
@@ -144,6 +144,7 @@ func (prs *ProviderRelayService) Addr() string {
 func (prs *ProviderRelayService) registerRoutes(router gin.IRouter) {
 	router.POST("/v1/messages", prs.proxyHandler("claude", "/v1/messages"))
 	router.POST("/responses", prs.proxyHandler("codex", "/responses"))
+	router.POST("/v1beta/models/:model/*action", prs.proxyHandler("gemini", ""))
 }
 
 func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.HandlerFunc {
@@ -161,6 +162,9 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 		isStream := gjson.GetBytes(bodyBytes, "stream").Bool()
 		requestedModel := gjson.GetBytes(bodyBytes, "model").String()
+		if requestedModel == "" {
+			requestedModel = c.Param("model")
+		}
 
 		// 如果未指定模型，记录警告但不拦截
 		if requestedModel == "" {
@@ -242,11 +246,15 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				i+1, len(active), provider.Name, effectiveModel)
 
 			startTime := time.Now()
+			finalEndpoint := endpoint
+			if finalEndpoint == "" {
+				finalEndpoint = c.Request.URL.Path
+			}
 			ok, err := prs.forwardRequest(
 				c,
 				kind,
 				provider,
-				endpoint,
+				finalEndpoint,
 				query,
 				clientHeaders,
 				currentBodyBytes,
@@ -513,6 +521,9 @@ func ReqeustLogHook(c *gin.Context, kind string, usage *ReqeustLog) func(data []
 		if kind == "codex" {
 			parserFn = CodexParseTokenUsageFromResponse
 		}
+		if kind == "gemini" {
+			parserFn = GeminiParseTokenUsageFromResponse
+		}
 		parseEventPayload(payload, parserFn, usage)
 
 		return true, data
@@ -572,6 +583,12 @@ func CodexParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	usage.CacheReadTokens += int(gjson.Get(data, "response.usage.input_tokens_details.cached_tokens").Int())
 	usage.ReasoningTokens += int(gjson.Get(data, "response.usage.output_tokens_details.reasoning_tokens").Int())
 	fmt.Println("data ---->", data, fmt.Sprintf("%v", usage))
+}
+
+func GeminiParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
+	// Gemini API 通常在响应中包含 usage 字段
+	usage.InputTokens += int(gjson.Get(data, "usageMetadata.promptTokenCount").Int())
+	usage.OutputTokens += int(gjson.Get(data, "usageMetadata.candidatesTokenCount").Int())
 }
 
 // ReplaceModelInRequestBody 替换请求体中的模型名

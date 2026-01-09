@@ -14,7 +14,7 @@ export type AutomationCard = {
   modelMapping?: Record<string, string>
 }
 
-export const automationCardGroups: Record<'claude' | 'codex', AutomationCard[]> = {
+export const automationCardGroups: Record<'claude' | 'codex' | 'gemini', AutomationCard[]> = {
   claude: [
     {
       id: 100,
@@ -71,6 +71,19 @@ export const automationCardGroups: Record<'claude' | 'codex', AutomationCard[]> 
       icon: 'aicoding',
       tint: 'rgba(236, 72, 153, 0.16)',
       accent: '#ec4899',
+      enabled: false,
+    },
+  ],
+  gemini: [
+    {
+      id: 301,
+      name: 'Google AI Studio',
+      apiUrl: 'https://generativelanguage.googleapis.com',
+      apiKey: '',
+      officialSite: 'https://aistudio.google.com',
+      icon: 'gemini',
+      tint: 'rgba(66, 133, 244, 0.16)',
+      accent: '#4285f4',
       enabled: false,
     },
   ],

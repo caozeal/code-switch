@@ -512,23 +512,28 @@ const tooltipRef = ref<HTMLElement | null>(null)
 const proxyStates = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
+  gemini: false,
 })
 const proxyBusy = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
+  gemini: false,
 })
 
 const providerStatsMap = reactive<Record<ProviderTab, Record<string, ProviderDailyStat>>>({
   claude: {},
   codex: {},
+  gemini: {},
 } as Record<ProviderTab, Record<string, ProviderDailyStat>>)
 const providerStatsLoading = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
+  gemini: false,
 } as Record<ProviderTab, boolean>)
 const providerStatsLoaded = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
+  gemini: false,
 } as Record<ProviderTab, boolean>)
 let providerStatsTimer: number | undefined
 let updateTimer: number | undefined
@@ -775,6 +780,7 @@ const loadUsageHeatmap = async () => {
 const tabs = [
   { id: 'claude', label: 'Claude Code' },
   { id: 'codex', label: 'Codex' },
+  { id: 'gemini', label: 'Gemini' },
 ] as const
 type ProviderTab = (typeof tabs)[number]['id']
 const providerTabIds = tabs.map((tab) => tab.id) as ProviderTab[]
@@ -782,6 +788,7 @@ const providerTabIds = tabs.map((tab) => tab.id) as ProviderTab[]
 const cards = reactive<Record<ProviderTab, AutomationCard[]>>({
   claude: createAutomationCards(automationCardGroups.claude),
   codex: createAutomationCards(automationCardGroups.codex),
+  gemini: createAutomationCards(automationCardGroups.gemini),
 })
 const draggingId = ref<number | null>(null)
 
