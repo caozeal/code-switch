@@ -290,6 +290,15 @@
                   <span>{{ stats.cost }}</span>
                 </template>
               </p>
+              <div v-if="providerHistoryMap[activeTab][normalizeProviderKey(card.name)]" class="provider-history-bar">
+                <span
+                  v-for="(code, idx) in providerHistoryMap[activeTab][normalizeProviderKey(card.name)]"
+                  :key="idx"
+                  class="history-dot"
+                  :class="getStatusColor(code)"
+                  :data-tooltip="`HTTP ${code}`"
+                />
+              </div>
             </div>
           </div>
           <div class="card-actions">
@@ -486,7 +495,7 @@ import ModelWhitelistEditor from '../common/ModelWhitelistEditor.vue'
 import ModelMappingEditor from '../common/ModelMappingEditor.vue'
 import { LoadProviders, SaveProviders } from '../../../bindings/codeswitch/services/providerservice'
 import { fetchProxyStatus, enableProxy, disableProxy } from '../../services/claudeSettings'
-import { fetchHeatmapStats, fetchProviderDailyStats, type ProviderDailyStat } from '../../services/logs'
+import { fetchHeatmapStats, fetchProviderDailyStats, fetchProviderHistory, type ProviderDailyStat } from '../../services/logs'
 import { fetchCurrentVersion } from '../../services/version'
 import { fetchAppSettings, type AppSettings } from '../../services/appSettings'
 import { getCurrentTheme, setTheme, type ThemeMode } from '../../utils/ThemeManager'
@@ -535,6 +544,13 @@ const providerStatsLoaded = reactive<Record<ProviderTab, boolean>>({
   codex: false,
   gemini: false,
 } as Record<ProviderTab, boolean>)
+
+const providerHistoryMap = reactive<Record<ProviderTab, Record<string, number[]>>>({
+  claude: {},
+  codex: {},
+  gemini: {},
+} as Record<ProviderTab, Record<string, number[]>>)
+
 let providerStatsTimer: number | undefined
 let updateTimer: number | undefined
 const showHeatmap = ref(true)
@@ -875,6 +891,19 @@ const loadProviderStats = async (tab: ProviderTab) => {
   }
 }
 
+const loadProviderHistory = async (tab: ProviderTab) => {
+  try {
+    const history = await fetchProviderHistory(tab)
+    const mapped: Record<string, number[]> = {}
+    ;(history ?? []).forEach((item) => {
+      mapped[normalizeProviderKey(item.provider)] = item.statuses
+    })
+    providerHistoryMap[tab] = mapped
+  } catch (error) {
+    console.error(`Failed to load provider history for ${tab}`, error)
+  }
+}
+
 type ProviderStatDisplay =
   | { state: 'loading' | 'empty'; message: string }
   | {
@@ -931,6 +960,11 @@ const providerStatDisplay = (providerName: string): ProviderStatDisplay => {
   }
 }
 
+const getStatusColor = (code: number) => {
+  if (code >= 200 && code < 300) return 'status-up'
+  return 'status-down'
+}
+
 const normalizeUrlWithScheme = (value: string) => {
   if (!value) return ''
   try {
@@ -964,6 +998,7 @@ const startProviderStatsTimer = () => {
   providerStatsTimer = window.setInterval(() => {
     providerTabIds.forEach((tab) => {
       void loadProviderStats(tab)
+      void loadProviderHistory(tab)
     })
   }, 60_000)
 }
@@ -979,7 +1014,9 @@ onMounted(async () => {
   void loadUsageHeatmap()
   await loadProvidersFromDisk()
   await Promise.all(providerTabIds.map(refreshProxyState))
-  await Promise.all(providerTabIds.map((tab) => loadProviderStats(tab)))
+  await Promise.all(
+    providerTabIds.map((tab) => Promise.all([loadProviderStats(tab), loadProviderHistory(tab)]))
+  )
   await loadAppSettings()
   await checkForUpdates()
   startProviderStatsTimer()
@@ -1239,4 +1276,31 @@ const onTabChange = (idx: number) => {
   font-size: 0.85rem;
 }
 
+.provider-history-bar {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+  height: 8px;
+  align-items: center;
+}
+
+.history-dot {
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--status-dot-bg, #e5e7eb);
+  transition: transform 0.2s ease;
+}
+
+.history-dot:hover {
+  transform: scaleY(1.5);
+}
+
+.history-dot.status-up {
+  background-color: #10b981; /* green-500 */
+}
+
+.history-dot.status-down {
+  background-color: #ef4444; /* red-500 */
+}
 </style>

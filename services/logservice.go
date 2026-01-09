@@ -522,17 +522,17 @@ type LogStats struct {
 }
 
 type ProviderDailyStat struct {
-	Provider          string  `json:"provider"`
-	TotalRequests     int64   `json:"total_requests"`
+	Provider           string  `json:"provider"`
+	TotalRequests      int64   `json:"total_requests"`
 	SuccessfulRequests int64   `json:"successful_requests"`
-	FailedRequests    int64   `json:"failed_requests"`
-	SuccessRate       float64 `json:"success_rate"`
-	InputTokens       int64   `json:"input_tokens"`
-	OutputTokens      int64   `json:"output_tokens"`
-	ReasoningTokens   int64   `json:"reasoning_tokens"`
-	CacheCreateTokens int64   `json:"cache_create_tokens"`
-	CacheReadTokens   int64   `json:"cache_read_tokens"`
-	CostTotal         float64 `json:"cost_total"`
+	FailedRequests     int64   `json:"failed_requests"`
+	SuccessRate        float64 `json:"success_rate"`
+	InputTokens        int64   `json:"input_tokens"`
+	OutputTokens       int64   `json:"output_tokens"`
+	ReasoningTokens    int64   `json:"reasoning_tokens"`
+	CacheCreateTokens  int64   `json:"cache_create_tokens"`
+	CacheReadTokens    int64   `json:"cache_read_tokens"`
+	CostTotal          float64 `json:"cost_total"`
 }
 
 type LogStatsSeries struct {
@@ -544,4 +544,76 @@ type LogStatsSeries struct {
 	CacheCreateTokens int64   `json:"cache_create_tokens"`
 	CacheReadTokens   int64   `json:"cache_read_tokens"`
 	TotalCost         float64 `json:"total_cost"`
+}
+
+type ProviderHistory struct {
+	Provider string `json:"provider"`
+	Statuses []int  `json:"statuses"`
+}
+
+func (ls *LogService) ListProviderHistory(platform string, limit int) ([]ProviderHistory, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	model := xdb.New("request_log")
+	// 按分钟聚合：每分钟只取最后一次请求的状态
+	sql := `
+		SELECT provider, http_code FROM (
+			SELECT 
+				provider, 
+				http_code,
+				ROW_NUMBER() OVER (PARTITION BY provider ORDER BY id DESC) as rn
+			FROM request_log
+			WHERE id IN (
+				SELECT MAX(id)
+				FROM request_log
+				WHERE platform = ?
+				GROUP BY provider, strftime('%Y-%m-%d %H:%M', created_at)
+			)
+		)
+		WHERE rn <= ?
+		ORDER BY provider ASC, rn DESC
+	`
+	records, err := model.Query(sql, platform, limit)
+	if err != nil {
+		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
+			return []ProviderHistory{}, nil
+		}
+		return nil, err
+	}
+
+	historyMap := make(map[string][]int)
+	var providers []string
+
+	defer records.Close()
+	for records.Next() {
+		var provider string
+		var code int
+		if err := records.Scan(&provider, &code); err != nil {
+			continue
+		}
+		if provider == "" {
+			continue
+		}
+		if _, ok := historyMap[provider]; !ok {
+			providers = append(providers, provider)
+		}
+		historyMap[provider] = append(historyMap[provider], code)
+	}
+
+	// 修正顺序：上面 SQL 中 rn DESC 是为了让历史记录从旧到新（左到右）排列，或者 rn ASC 配合前端展示
+	// 图片中通常左边是旧的，右边是新的。rn=1 是最晚的。
+	// 如果前端从左到右渲染数组，且希望最右边是最新的，那么数组应该是 [旧, ..., 新]
+	// rn=1 是新。所以我们要反转一下，或者 SQL 调整。
+	// 当前 SQL：rn DESC 意味着 rn=10, 9, ..., 1。所以是旧到新。
+
+	result := make([]ProviderHistory, 0, len(providers))
+	for _, p := range providers {
+		result = append(result, ProviderHistory{
+			Provider: p,
+			Statuses: historyMap[p],
+		})
+	}
+
+	return result, nil
 }

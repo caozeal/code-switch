@@ -86,6 +86,15 @@ export type ProviderDailyStat = {
   cost_total: number
 }
 
+export type ProviderHistory = {
+  provider: string
+  statuses: number[]
+}
+
+export const fetchProviderHistory = async (platform = '', limit = 20): Promise<ProviderHistory[]> => {
+  return Call.ByName('codeswitch/services.LogService.ListProviderHistory', platform, limit)
+}
+
 export const fetchProviderDailyStats = async (
   platform = '',
 ): Promise<ProviderDailyStat[]> => {
