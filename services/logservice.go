@@ -555,8 +555,10 @@ func (ls *LogService) ListProviderHistory(platform string, limit int) ([]Provide
 	if limit <= 0 {
 		limit = 20
 	}
+	start := startOfDay(time.Now())
 	model := xdb.New("request_log")
 	// 按分钟聚合：每分钟只取最后一次请求的状态
+	// 只查看当天的
 	sql := `
 		SELECT provider, http_code FROM (
 			SELECT 
@@ -567,14 +569,14 @@ func (ls *LogService) ListProviderHistory(platform string, limit int) ([]Provide
 			WHERE id IN (
 				SELECT MAX(id)
 				FROM request_log
-				WHERE platform = ?
+				WHERE platform = ? AND created_at >= ?
 				GROUP BY provider, strftime('%Y-%m-%d %H:%M', created_at)
 			)
 		)
 		WHERE rn <= ?
 		ORDER BY provider ASC, rn DESC
 	`
-	records, err := model.Query(sql, platform, limit)
+	records, err := model.Query(sql, platform, start.Format(timeLayout), limit)
 	if err != nil {
 		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
 			return []ProviderHistory{}, nil
