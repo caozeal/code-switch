@@ -12,6 +12,8 @@ export type AutomationCard = {
   supportedModels?: Record<string, boolean>
   // 模型映射：external model -> internal model
   modelMapping?: Record<string, string>
+  // 暂停结束时间
+  pausedUntil?: string
 }
 
 export const automationCardGroups: Record<'claude' | 'codex' | 'gemini', AutomationCard[]> = {

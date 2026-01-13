@@ -184,6 +184,13 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 				continue
 			}
 
+			// 暂停过滤：支持自动恢复
+			if provider.IsPaused() {
+				fmt.Printf("[INFO] Provider %s 处于暂停状态，已跳过 (预计恢复时间: %v)\n", provider.Name, provider.PausedUntil.Local().Format("15:04:05"))
+				skippedCount++
+				continue
+			}
+
 			// 配置验证：失败则自动跳过
 			if errs := provider.ValidateConfiguration(); len(errs) > 0 {
 				fmt.Printf("[WARN] Provider %s 配置验证失败，已自动跳过: %v\n", provider.Name, errs)

@@ -251,8 +251,11 @@
               ></span>
             </div>
             <div class="card-text">
-              <div class="card-title-row">
+               <div class="card-title-row">
                 <p class="card-title">{{ card.name }}</p>
+                <span v-if="isProviderPaused(card)" class="paused-badge" :data-tooltip="t('components.main.providers.pausedUntil', { time: new Date(card.pausedUntil!).toLocaleTimeString() })">
+                  {{ t('components.main.form.switch.off') }}
+                </span>
                 <span
                   v-if="card.officialSite"
                   class="card-site"
@@ -306,6 +309,19 @@
               <input type="checkbox" v-model="card.enabled" @change="persistProviders(activeTab)" />
               <span></span>
             </label>
+            <button
+              class="ghost-icon"
+              :class="{ 'is-paused': isProviderPaused(card) }"
+              :data-tooltip="isProviderPaused(card) ? t('components.main.providers.resume') : t('components.main.providers.pause')"
+              @click="togglePause(card)"
+            >
+              <svg v-if="isProviderPaused(card)" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 3l14 9-14 9V3z" fill="currentColor" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor" />
+              </svg>
+            </button>
             <button class="ghost-icon" @click="configure(card)">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -493,7 +509,7 @@ import BaseModal from '../common/BaseModal.vue'
 import BaseInput from '../common/BaseInput.vue'
 import ModelWhitelistEditor from '../common/ModelWhitelistEditor.vue'
 import ModelMappingEditor from '../common/ModelMappingEditor.vue'
-import { LoadProviders, SaveProviders } from '../../../bindings/codeswitch/services/providerservice'
+import { LoadProviders, SaveProviders, PauseProvider } from '../../../bindings/codeswitch/services/providerservice'
 import { fetchProxyStatus, enableProxy, disableProxy } from '../../services/claudeSettings'
 import { fetchHeatmapStats, fetchProviderDailyStats, fetchProviderHistory, type ProviderDailyStat } from '../../services/logs'
 import { fetchCurrentVersion } from '../../services/version'
@@ -767,6 +783,24 @@ const stopUpdateTimer = () => {
 }
 
 const normalizeProviderKey = (value: string) => value?.trim().toLowerCase() ?? ''
+
+const isProviderPaused = (card: AutomationCard) => {
+  if (!card.pausedUntil) return false
+  return new Date(card.pausedUntil) > new Date()
+}
+
+const togglePause = async (card: AutomationCard) => {
+  try {
+    if (isProviderPaused(card)) {
+      await PauseProvider(activeTab.value, card.id, -1)
+    } else {
+      await PauseProvider(activeTab.value, card.id, 10)
+    }
+    await loadProvidersFromDisk()
+  } catch (error) {
+    console.error('Failed to toggle pause', error)
+  }
+}
 
 const normalizeVersion = (value: string) => value.replace(/^v/i, '').trim()
 
@@ -1302,5 +1336,24 @@ const onTabChange = (idx: number) => {
 
 .history-dot.status-down {
   background-color: #ef4444; /* red-500 */
+}
+
+.paused-badge {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: var(--mac-system-red-transparent, rgba(239, 68, 68, 0.15));
+  color: #ef4444;
+  font-weight: 500;
+  margin-left: 8px;
+  line-height: 1.2;
+}
+
+.ghost-icon.is-paused {
+  color: #ef4444;
+}
+
+.ghost-icon.is-paused:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 </style>

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Provider struct {
@@ -32,8 +33,19 @@ type Provider struct {
 	// 使用 omitempty 确保零值不序列化，向后兼容
 	Level int `json:"level,omitempty"`
 
+	// 暂停结束时间 - 如果当前时间早于该时间，则供应商处于暂停状态
+	PausedUntil *time.Time `json:"pausedUntil,omitempty"`
+
 	// 内部字段：配置验证错误（不持久化）
 	configErrors []string `json:"-"`
+}
+
+// IsPaused 检查供应商是否处于暂停状态
+func (p *Provider) IsPaused() bool {
+	if p.PausedUntil == nil {
+		return false
+	}
+	return time.Now().Before(*p.PausedUntil)
 }
 
 type providerEnvelope struct {
@@ -148,6 +160,30 @@ func (ps *ProviderService) LoadProviders(kind string) ([]Provider, error) {
 		return nil, err
 	}
 	return envelope.Providers, nil
+}
+
+// PauseProvider 暂停指定的供应商
+func (ps *ProviderService) PauseProvider(kind string, id int, durationMinutes int) error {
+	providers, err := ps.LoadProviders(kind)
+	if err != nil {
+		return err
+	}
+
+	found := false
+	for i := range providers {
+		if providers[i].ID == id {
+			until := time.Now().Add(time.Duration(durationMinutes) * time.Minute)
+			providers[i].PausedUntil = &until
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("provider with id %d not found", id)
+	}
+
+	return ps.SaveProviders(kind, providers)
 }
 
 // IsModelSupported 检查 provider 是否支持指定的模型

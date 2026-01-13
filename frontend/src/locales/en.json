@@ -97,7 +97,10 @@
         "cost": "Cost",
         "successRate": "Success rate",
         "loading": "Refreshing...",
-        "noData": "No data yet today"
+        "noData": "No data yet today",
+        "pause": "Pause 10m",
+        "resume": "Resume",
+        "pausedUntil": "Paused until {time}"
       },
       "form": {
         "createTitle": "Add vendor",
