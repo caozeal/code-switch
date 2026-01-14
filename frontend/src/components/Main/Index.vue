@@ -254,7 +254,7 @@
                <div class="card-title-row">
                 <p class="card-title">{{ card.name }}</p>
                 <span v-if="isProviderPaused(card)" class="paused-badge" :data-tooltip="t('components.main.providers.pausedUntil', { time: new Date(card.pausedUntil!).toLocaleTimeString() })">
-                  {{ t('components.main.form.switch.off') }}
+                  {{ new Date(card.pausedUntil!).toLocaleTimeString() }}
                 </span>
                 <span
                   v-if="card.officialSite"
