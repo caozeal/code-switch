@@ -277,6 +277,10 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 
 			if ok {
 				fmt.Printf("[INFO]   ✓ 成功: %s | 耗时: %.2fs\n", provider.Name, duration.Seconds())
+				// 记录成功，重置失败计数
+				if err := prs.providerService.RecordSuccess(kind, provider.ID); err != nil {
+					fmt.Printf("[WARN]   记录成功状态失败: %v\n", err)
+				}
 				return
 			}
 
@@ -286,6 +290,11 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			}
 			fmt.Printf("[WARN]   ✗ 失败: %s | 错误: %s | 耗时: %.2fs\n",
 				provider.Name, errorMsg, duration.Seconds())
+
+			// 记录失败，可能触发自动暂停
+			if err := prs.providerService.RecordFailure(kind, provider.ID); err != nil {
+				fmt.Printf("[WARN]   记录失败状态失败: %v\n", err)
+			}
 			lastErr = err
 		}
 

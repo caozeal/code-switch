@@ -36,6 +36,9 @@ type Provider struct {
 	// 暂停结束时间 - 如果当前时间早于该时间，则供应商处于暂停状态
 	PausedUntil *time.Time `json:"pausedUntil,omitempty"`
 
+	// 连续失败次数 - 累计达到 10 次会自动暂停 10 分钟
+	ConsecutiveFailures int `json:"consecutiveFailures,omitempty"`
+
 	// 内部字段：配置验证错误（不持久化）
 	configErrors []string `json:"-"`
 }
@@ -89,7 +92,10 @@ func providerFilePath(kind string) (string, error) {
 func (ps *ProviderService) SaveProviders(kind string, providers []Provider) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
+	return ps.saveProvidersLocked(kind, providers)
+}
 
+func (ps *ProviderService) saveProvidersLocked(kind string, providers []Provider) error {
 	path, err := providerFilePath(kind)
 	if err != nil {
 		return err
@@ -164,6 +170,9 @@ func (ps *ProviderService) LoadProviders(kind string) ([]Provider, error) {
 
 // PauseProvider 暂停指定的供应商
 func (ps *ProviderService) PauseProvider(kind string, id int, durationMinutes int) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
 	providers, err := ps.LoadProviders(kind)
 	if err != nil {
 		return err
@@ -183,7 +192,73 @@ func (ps *ProviderService) PauseProvider(kind string, id int, durationMinutes in
 		return fmt.Errorf("provider with id %d not found", id)
 	}
 
-	return ps.SaveProviders(kind, providers)
+	return ps.saveProvidersLocked(kind, providers)
+}
+
+// RecordFailure 记录供应商请求失败
+// 连续失败 10 次将自动暂停 10 分钟
+func (ps *ProviderService) RecordFailure(kind string, id int) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	providers, err := ps.LoadProviders(kind)
+	if err != nil {
+		return err
+	}
+
+	var target *Provider
+	for i := range providers {
+		if providers[i].ID == id {
+			target = &providers[i]
+			break
+		}
+	}
+
+	if target == nil {
+		return fmt.Errorf("provider with id %d not found", id)
+	}
+
+	target.ConsecutiveFailures++
+	if target.ConsecutiveFailures >= 10 {
+		until := time.Now().Add(10 * time.Minute)
+		target.PausedUntil = &until
+		target.ConsecutiveFailures = 0 // 重置计数，避免重复触发
+		fmt.Printf("[ProviderService] Provider %s (ID: %d) 已因连续失败 %d 次被自动暂停 10 分钟\n", target.Name, target.ID, target.ConsecutiveFailures)
+	}
+
+	return ps.saveProvidersLocked(kind, providers)
+}
+
+// RecordSuccess 记录供应商请求成功
+// 重置连续失败计数
+func (ps *ProviderService) RecordSuccess(kind string, id int) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	providers, err := ps.LoadProviders(kind)
+	if err != nil {
+		return err
+	}
+
+	var target *Provider
+	for i := range providers {
+		if providers[i].ID == id {
+			target = &providers[i]
+			break
+		}
+	}
+
+	if target == nil {
+		return fmt.Errorf("provider with id %d not found", id)
+	}
+
+	// 如果已经是 0，无需保存
+	if target.ConsecutiveFailures == 0 {
+		return nil
+	}
+
+	target.ConsecutiveFailures = 0
+	return ps.saveProvidersLocked(kind, providers)
 }
 
 // IsModelSupported 检查 provider 是否支持指定的模型
