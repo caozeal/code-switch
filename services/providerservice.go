@@ -219,7 +219,7 @@ func (ps *ProviderService) RecordFailure(kind string, id int) error {
 	}
 
 	target.ConsecutiveFailures++
-	if target.ConsecutiveFailures >= 10 {
+	if target.ConsecutiveFailures >= 5 {
 		until := time.Now().Add(10 * time.Minute)
 		target.PausedUntil = &until
 		target.ConsecutiveFailures = 0 // 重置计数，避免重复触发
