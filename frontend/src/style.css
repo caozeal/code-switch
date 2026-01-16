@@ -763,7 +763,7 @@ html.dark .mac-sidebar-item:hover {
 .logs-table .col-time { width: 180px; }
 .logs-table .col-platform { width: 120px; }
 .logs-table .col-provider { width: 170px; }
-.logs-table .col-model { width: 150px; }
+.logs-table .col-model { width: 100px; }
 .logs-table .col-http { width: 90px; }
 .logs-table .col-error { width: 100px; }
 .logs-table .col-stream { width: 120px; }
