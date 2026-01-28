@@ -52,6 +52,8 @@
             <option value="">{{ t('components.logs.filters.allPlatforms') }}</option>
             <option value="claude">Claude</option>
             <option value="codex">Codex</option>
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
           </select>
         </label>
         <label class="filter-field">

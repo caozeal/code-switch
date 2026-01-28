@@ -40,7 +40,7 @@
     },
     "main": {
       "hero": {
-        "eyebrow": "Claude & Codex vendor overview",
+        "eyebrow": "Claude, Codex, Gemini & OpenAI vendor overview",
         "title": "Stay on top of AI coding supply.",
         "lead": "The green heatmap highlights daily compute and token usage so we can monitor each vendor's load."
       },
@@ -156,7 +156,7 @@
     "logs": {
       "eyebrow": "Request diagnostics",
       "title": "Request logs",
-      "subtitle": "Inspect recent relay activity for Claude Code and Codex providers.",
+      "subtitle": "Inspect recent relay activity for Claude, Codex, Gemini and OpenAI providers.",
       "loading": "Loading...",
       "refresh": "Refresh",
       "applyFilters": "Apply filters",
@@ -305,7 +305,9 @@
       },
       "platforms": {
         "claude": "Claude Code",
-        "codex": "Codex"
+        "codex": "Codex",
+        "gemini": "Gemini",
+        "openai": "OpenAI"
       },
       "form": {
         "createTitle": "Create MCP server",

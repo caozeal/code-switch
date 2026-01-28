@@ -114,7 +114,7 @@ func main() {
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
 		Name:        "Code Switch",
-		Description: "Claude Code and Codex provier manager",
+		Description: "Claude Code, Codex, Gemini and OpenAI provider manager",
 		Services: []application.Service{
 			application.NewService(appservice),
 			application.NewService(suiService),
