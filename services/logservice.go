@@ -26,7 +26,7 @@ func NewLogService() *LogService {
 	return &LogService{pricing: svc}
 }
 
-func (ls *LogService) ListRequestLogs(platform string, provider string, limit int) ([]ReqeustLog, error) {
+func (ls *LogService) ListRequestLogs(platform string, provider string, startTime string, endTime string, limit int) ([]ReqeustLog, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -43,6 +43,12 @@ func (ls *LogService) ListRequestLogs(platform string, provider string, limit in
 	}
 	if provider != "" {
 		options = append(options, xdb.WhereEq("provider", provider))
+	}
+	if startTime != "" {
+		options = append(options, xdb.WhereGe("created_at", startTime))
+	}
+	if endTime != "" {
+		options = append(options, xdb.WhereLe("created_at", endTime))
 	}
 	records, err := model.Selects(options...)
 	if err != nil {
@@ -177,20 +183,13 @@ func (ls *LogService) HeatmapStats(days int) ([]HeatmapStat, error) {
 	return stats, nil
 }
 
-func (ls *LogService) StatsSince(platform string) (LogStats, error) {
-	const seriesHours = 24
-
+func (ls *LogService) StatsSince(platform string, provider string, startTime string, endTime string) (LogStats, error) {
 	stats := LogStats{
-		Series: make([]LogStatsSeries, 0, seriesHours),
+		Series: make([]LogStatsSeries, 0),
 	}
-	now := time.Now()
+
 	model := xdb.New("request_log")
-	seriesStart := startOfDay(now)
-	seriesEnd := seriesStart.Add(seriesHours * time.Hour)
-	queryStart := seriesStart.Add(-24 * time.Hour)
-	summaryStart := seriesStart
 	options := []xdb.Option{
-		xdb.WhereGte("created_at", queryStart.Format(timeLayout)),
 		xdb.Field(
 			"model",
 			"input_tokens",
@@ -202,9 +201,40 @@ func (ls *LogService) StatsSince(platform string) (LogStats, error) {
 		),
 		xdb.OrderByAsc("created_at"),
 	}
+
 	if platform != "" {
 		options = append(options, xdb.WhereEq("platform", platform))
 	}
+	if provider != "" {
+		options = append(options, xdb.WhereEq("provider", provider))
+	}
+
+	var start, end time.Time
+	if startTime != "" {
+		if t, err := time.ParseInLocation(timeLayout, startTime, time.Local); err == nil {
+			start = t
+		} else if t, err := time.Parse(timeLayout, startTime); err == nil {
+			start = t.In(time.Local)
+		}
+	}
+	if start.IsZero() {
+		start = startOfDay(time.Now())
+	}
+
+	if endTime != "" {
+		if t, err := time.ParseInLocation(timeLayout, endTime, time.Local); err == nil {
+			end = t
+		} else if t, err := time.Parse(timeLayout, endTime); err == nil {
+			end = t.In(time.Local)
+		}
+	}
+	if end.IsZero() {
+		end = time.Now()
+	}
+
+	options = append(options, xdb.WhereGe("created_at", start.Format(timeLayout)))
+	options = append(options, xdb.WhereLe("created_at", end.Format(timeLayout)))
+
 	records, err := model.Selects(options...)
 	if err != nil {
 		if errors.Is(err, xdb.ErrNotFound) || isNoSuchTableErr(err) {
@@ -213,40 +243,59 @@ func (ls *LogService) StatsSince(platform string) (LogStats, error) {
 		return stats, err
 	}
 
-	seriesBuckets := make([]*LogStatsSeries, seriesHours)
-	for i := 0; i < seriesHours; i++ {
-		bucketTime := seriesStart.Add(time.Duration(i) * time.Hour)
+	// Determine grouping based on range
+	duration := end.Sub(start)
+	groupByDay := duration > 48*time.Hour
+
+	var bucketDuration time.Duration
+	if groupByDay {
+		bucketDuration = 24 * time.Hour
+	} else {
+		bucketDuration = time.Hour
+	}
+
+	// Create buckets
+	numBuckets := int(duration/bucketDuration) + 1
+	seriesBuckets := make([]*LogStatsSeries, numBuckets)
+	bucketStartTimes := make([]time.Time, numBuckets)
+
+	for i := 0; i < numBuckets; i++ {
+		bt := start.Add(time.Duration(i) * bucketDuration)
+		if groupByDay {
+			bt = startOfDay(bt)
+		} else {
+			bt = startOfHour(bt)
+		}
+		bucketStartTimes[i] = bt
 		seriesBuckets[i] = &LogStatsSeries{
-			Day: bucketTime.Format(timeLayout),
+			Day: bt.Format(timeLayout),
 		}
 	}
 
 	for _, record := range records {
-		createdAt, hasTime := parseCreatedAt(record)
-		dayKey := dayFromTimestamp(record.GetString("created_at"))
-		isToday := dayKey == seriesStart.Format("2006-01-02")
+		createdAt, ok := parseCreatedAt(record)
+		if !ok {
+			continue
+		}
 
-		if hasTime {
-			if createdAt.Before(seriesStart) || !createdAt.Before(seriesEnd) {
-				continue
-			}
-		} else {
-			if !isToday {
-				continue
-			}
-			createdAt = seriesStart
+		if createdAt.Before(start) || createdAt.After(end) {
+			continue
 		}
 
 		bucketIndex := 0
-		if hasTime {
-			bucketIndex = int(createdAt.Sub(seriesStart) / time.Hour)
-			if bucketIndex < 0 {
-				bucketIndex = 0
-			}
-			if bucketIndex >= seriesHours {
-				bucketIndex = seriesHours - 1
-			}
+		if groupByDay {
+			bucketIndex = int(startOfDay(createdAt).Sub(startOfDay(start)) / (24 * time.Hour))
+		} else {
+			bucketIndex = int(startOfHour(createdAt).Sub(startOfHour(start)) / time.Hour)
 		}
+
+		if bucketIndex < 0 {
+			bucketIndex = 0
+		}
+		if bucketIndex >= numBuckets {
+			bucketIndex = numBuckets - 1
+		}
+
 		bucket := seriesBuckets[bucketIndex]
 		input := record.GetInt("input_tokens")
 		output := record.GetInt("output_tokens")
@@ -269,9 +318,7 @@ func (ls *LogService) StatsSince(platform string) (LogStats, error) {
 		bucket.CacheReadTokens += int64(cacheRead)
 		bucket.TotalCost += cost.TotalCost
 
-		if createdAt.IsZero() || createdAt.Before(summaryStart) {
-			continue
-		}
+		// Always update summary stats
 		stats.TotalRequests++
 		stats.InputTokens += int64(input)
 		stats.OutputTokens += int64(output)
@@ -285,15 +332,8 @@ func (ls *LogService) StatsSince(platform string) (LogStats, error) {
 		stats.CostTotal += cost.TotalCost
 	}
 
-	for i := 0; i < seriesHours; i++ {
-		if bucket := seriesBuckets[i]; bucket != nil {
-			stats.Series = append(stats.Series, *bucket)
-		} else {
-			bucketTime := seriesStart.Add(time.Duration(i) * time.Hour)
-			stats.Series = append(stats.Series, LogStatsSeries{
-				Day: bucketTime.Format(timeLayout),
-			})
-		}
+	for _, b := range seriesBuckets {
+		stats.Series = append(stats.Series, *b)
 	}
 
 	return stats, nil

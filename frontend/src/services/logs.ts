@@ -28,14 +28,25 @@ export type RequestLog = {
 type RequestLogQuery = {
   platform?: string
   provider?: string
+  startTime?: string
+  endTime?: string
   limit?: number
 }
 
 export const fetchRequestLogs = async (query: RequestLogQuery = {}): Promise<RequestLog[]> => {
   const platform = query.platform ?? ''
   const provider = query.provider ?? ''
+  const startTime = query.startTime ?? ''
+  const endTime = query.endTime ?? ''
   const limit = query.limit ?? 100
-  return Call.ByName('codeswitch/services.LogService.ListRequestLogs', platform, provider, limit)
+  return Call.ByName(
+    'codeswitch/services.LogService.ListRequestLogs',
+    platform,
+    provider,
+    startTime,
+    endTime,
+    limit,
+  )
 }
 
 export const fetchLogProviders = async (platform = ''): Promise<string[]> => {
@@ -68,8 +79,25 @@ export type LogStats = {
   series: LogStatsSeries[]
 }
 
-export const fetchLogStats = async (platform = ''): Promise<LogStats> => {
-  return Call.ByName('codeswitch/services.LogService.StatsSince', platform)
+type LogStatsQuery = {
+  platform?: string
+  provider?: string
+  startTime?: string
+  endTime?: string
+}
+
+export const fetchLogStats = async (query: LogStatsQuery = {}): Promise<LogStats> => {
+  const platform = query.platform ?? ''
+  const provider = query.provider ?? ''
+  const startTime = query.startTime ?? ''
+  const endTime = query.endTime ?? ''
+  return Call.ByName(
+    'codeswitch/services.LogService.StatsSince',
+    platform,
+    provider,
+    startTime,
+    endTime,
+  )
 }
 
 export type ProviderDailyStat = {

@@ -167,6 +167,8 @@
         "provider": "Provider",
         "allProviders": "All providers",
         "providerPlaceholder": "Provider name",
+        "startTime": "Start Time",
+        "endTime": "End Time",
         "limit": "Limit"
       },
       "tabs": {

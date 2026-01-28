@@ -1,14 +1,34 @@
 <template>
   <div class="logs-page">
     <div class="logs-header">
-      <BaseButton variant="outline" type="button" @click="backToHome">
-        {{ t('components.logs.back') }}
-      </BaseButton>
-      <div class="refresh-indicator">
-        <span>{{ t('components.logs.nextRefresh', { seconds: countdown }) }}</span>
-        <BaseButton size="sm" :disabled="loading" @click="manualRefresh">
-          {{ t('components.logs.refresh') }}
+      <div class="header-left">
+        <BaseButton variant="outline" type="button" @click="backToHome">
+          {{ t('components.logs.back') }}
         </BaseButton>
+      </div>
+      
+      <div class="header-center">
+        <div class="header-filters date-range-picker-wrapper">
+           <VueDatePicker 
+            v-model="dateRange" 
+            range 
+            :enable-time-picker="false"
+            :auto-apply="true"
+            :clearable="false"
+            format="yyyy-MM-dd"
+            input-class-name="mac-datepicker-input"
+            menu-class-name="mac-datepicker-menu"
+           />
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="refresh-indicator">
+          <span>{{ t('components.logs.nextRefresh', { seconds: countdown }) }}</span>
+          <BaseButton size="sm" :disabled="loading" @click="manualRefresh">
+            {{ t('components.logs.refresh') }}
+          </BaseButton>
+        </div>
       </div>
     </div>
 
@@ -146,15 +166,51 @@ import {
 import type { ChartOptions } from 'chart.js'
 import { Line } from 'vue-chartjs'
 
+import { VueDatePicker } from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css'
+
 Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
 
 const { t } = useI18n()
 const router = useRouter()
 
+const formatDateOnly = (date: Date) => {
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+const formatStartTime = (val: string) => {
+  if (!val) return ''
+  return val + ' 00:00:00'
+}
+
+const formatEndTime = (val: string) => {
+  if (!val) return ''
+  return val + ' 23:59:59'
+}
+
+const startTimeDefault = new Date()
+startTimeDefault.setDate(startTimeDefault.getDate() - 7) // Default to last 7 days since it's easier to see range
+const endTimeDefault = new Date()
+
 const logs = ref<RequestLog[]>([])
 const stats = ref<LogStats | null>(null)
 const loading = ref(false)
-const filters = reactive({ platform: '', provider: '' })
+const filters = reactive({
+  platform: '',
+  provider: '',
+  startTime: formatDateOnly(startTimeDefault),
+  endTime: formatDateOnly(endTimeDefault),
+})
+
+const dateRange = ref([startTimeDefault, endTimeDefault])
+
+watch(dateRange, (newRange) => {
+  if (newRange && newRange[0] && newRange[1]) {
+    filters.startTime = formatDateOnly(newRange[0])
+    filters.endTime = formatDateOnly(newRange[1])
+  }
+})
 const page = ref(1)
 const PAGE_SIZE = 15
 const providerOptions = ref<string[]>([])
@@ -331,8 +387,14 @@ const chartOptions = computed<ChartOptions<'line'>>(() => {
 })
 const formatSeriesLabel = (value?: string) => {
   if (!value) return ''
+  const series = statsSeries.value
+  const isDaily = series.length > 2 && (series[1].day !== series[0].day) // Simple heuristic: if labels are different days
+
   const parsed = parseLogDate(value)
   if (parsed) {
+    if (isDaily || series.length > 48) {
+      return `${padHour(parsed.getMonth() + 1)}-${padHour(parsed.getDate())}`
+    }
     return `${padHour(parsed.getHours())}:00`
   }
   const match = value.match(/(\d{2}):(\d{2})/)
@@ -375,6 +437,8 @@ const loadLogs = async () => {
     const data = await fetchRequestLogs({
       platform: filters.platform,
       provider: filters.provider,
+      startTime: formatStartTime(filters.startTime),
+      endTime: formatEndTime(filters.endTime),
       limit: 200,
     })
     logs.value = data ?? []
@@ -388,7 +452,12 @@ const loadLogs = async () => {
 
 const loadStats = async () => {
   try {
-    const data = await fetchLogStats(filters.platform)
+    const data = await fetchLogStats({
+      platform: filters.platform,
+      provider: filters.provider,
+      startTime: formatStartTime(filters.startTime),
+      endTime: formatEndTime(filters.endTime),
+    })
     stats.value = data ?? null
   } catch (error) {
     console.error('failed to load log stats', error)
@@ -528,10 +597,15 @@ const statsCards = computed(() => {
 })
 
 const summaryDateLabel = computed(() => {
-  const firstBucket = statsSeries.value.find((item) => item.day)
-  const parsed = parseLogDate(firstBucket?.day ?? '')
-  const date = parsed ?? startOfTodayLocal()
-  return `${date.getFullYear()}-${padHour(date.getMonth() + 1)}-${padHour(date.getDate())}`
+  const startRaw = filters.startTime
+  const endRaw = filters.endTime
+  if (!startRaw || !endRaw) return ''
+
+  const start = new Date(startRaw)
+  const end = new Date(endRaw)
+
+  const fmt = (d: Date) => `${d.getFullYear()}-${padHour(d.getMonth() + 1)}-${padHour(d.getDate())}`
+  return `${fmt(start)} ~ ${fmt(end)}`
 })
 
 const loadProviderOptions = async () => {
@@ -547,14 +621,28 @@ const loadProviderOptions = async () => {
 }
 
 watch(
-  () => filters.platform,
+  () => [filters.startTime, filters.endTime, filters.platform],
   async () => {
-    await loadProviderOptions()
+    // Sync dateRange if filters change externally (though mainly driven by dateRange)
+    if (filters.startTime && filters.endTime) {
+       const start = new Date(filters.startTime)
+       const end = new Date(filters.endTime)
+       if (dateRange.value[0]?.getTime() !== start.getTime() || dateRange.value[1]?.getTime() !== end.getTime()) {
+          dateRange.value = [start, end]
+       }
+    }
+
+    if (filters.platform) {
+      await loadProviderOptions()
+    }
+    await loadDashboard()
+    resetTimer()
   },
 )
 
 onMounted(async () => {
-  await Promise.all([loadDashboard(), loadProviderOptions()])
+  await loadProviderOptions()
+  await loadDashboard()
   startCountdown()
   setupThemeObserver()
 })
@@ -566,6 +654,102 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.date-range-picker-wrapper {
+  /* Override wrapper styles to fit the datepicker */
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.date-range-picker-wrapper:hover {
+  background: transparent; 
+  border-color: transparent;
+}
+
+:deep(.dp__main) {
+  font-family: inherit;
+}
+
+:deep(.dp__input_wrap) {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.05); /* Match previous header-filters bg */
+  border: 1px solid var(--mac-border);
+  transition: all 0.2s ease;
+  padding: 4px 12px;
+}
+
+:deep(.dp__input_wrap:hover) {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: var(--mac-accent);
+}
+
+:deep(.mac-datepicker-input) {
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+  font-family: var(--mac-font);
+  color: var(--mac-text);
+  padding: 0;
+  height: 24px;
+  text-align: center;
+  width: 210px; /* Adjust as needed */
+  box-shadow: none;
+}
+
+:deep(.dp__input_icon) {
+   display: none; /* Hide default icon for cleaner look, or style it if desired */
+}
+
+:deep(.dp__clear_icon) {
+  display: none;
+}
+
+/* Menu Customization */
+:deep(.mac-datepicker-menu) {
+  font-family: var(--mac-font);
+  border-radius: 12px;
+  border: 1px solid var(--mac-border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+:deep(.dp__theme_light) {
+  --dp-background-color: var(--mac-surface-strong);
+  --dp-text-color: var(--mac-text);
+  --dp-hover-color: rgba(148, 163, 184, 0.1);
+  --dp-hover-text-color: var(--mac-text);
+  --dp-hover-icon-color: var(--mac-text);
+  --dp-primary-color: var(--mac-accent);
+  --dp-primary-text-color: #fff;
+  --dp-secondary-color: #c0c4cc;
+  --dp-border-color: var(--mac-border);
+  --dp-menu-border-color: var(--mac-border);
+  --dp-border-color-hover: var(--mac-accent);
+  --dp-disabled-color: #f6f7f9;
+  --dp-scroll-bar-background: #f3f3f3;
+  --dp-scroll-bar-color: #959595;
+  --dp-success-color: #76d275;
+  --dp-success-color-disabled: #a3d9b1;
+  --dp-icon-color: #959595;
+  --dp-danger-color: #ff6f60;
+  --dp-marker-color: #ff6f60;
+  --dp-tooltip-color: #fafafa;
+  --dp-disabled-color-text: #8e8e8e;
+  --dp-highlight-color: rgb(25 118 210 / 10%);
+}
+
+html.dark :deep(.dp__theme_light) {
+   --dp-background-color: var(--mac-surface);
+   /* Re-map to dark variables if needed, though vue-datepicker has a dark theme mode too */
+}
+
 .logs-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
