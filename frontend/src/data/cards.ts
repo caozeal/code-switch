@@ -16,7 +16,7 @@ export type AutomationCard = {
   pausedUntil?: string
 }
 
-export const automationCardGroups: Record<'claude' | 'codex' | 'gemini', AutomationCard[]> = {
+export const automationCardGroups: Record<'claude' | 'codex' | 'gemini' | 'openai', AutomationCard[]> = {
   claude: [
     {
       id: 100,
@@ -88,6 +88,35 @@ export const automationCardGroups: Record<'claude' | 'codex' | 'gemini', Automat
       accent: '#4285f4',
       enabled: false,
     },
+  ],
+  openai: [
+    {
+      id: 401,
+      name: 'OpenRouter',
+      apiUrl: 'https://openrouter.ai/api/v1',
+      apiKey: '',
+      officialSite: 'https://openrouter.ai',
+      icon: 'openrouter',
+      tint: 'rgba(107, 114, 128, 0.16)',
+      accent: '#6b7280',
+      enabled: false,
+      modelMapping: {
+        "claude-*": "anthropic/claude-*",
+        "gpt-*": "openai/gpt-*",
+        "gemini-*": "google/gemini-*"
+      }
+    },
+    {
+      id: 402,
+      name: 'Deepseek',
+      apiUrl: 'https://api.deepseek.com/v1',
+      apiKey: '',
+      officialSite: 'https://www.deepseek.com',
+      icon: 'deepseek',
+      tint: 'rgba(251, 146, 60, 0.18)',
+      accent: '#f97316',
+      enabled: false,
+    }
   ],
 }
 

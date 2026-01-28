@@ -76,6 +76,7 @@ func main() {
 	claudeSettings := services.NewClaudeSettingsService(providerRelay.Addr())
 	codexSettings := services.NewCodexSettingsService(providerRelay.Addr())
 	geminiSettings := services.NewGeminiSettingsService(providerRelay.Addr())
+	openaiSettings := services.NewOpenAISettingsService(providerRelay.Addr())
 	logService := services.NewLogService()
 	autoStartService := services.NewAutoStartService()
 	appSettings := services.NewAppSettingsService(autoStartService)
@@ -122,6 +123,7 @@ func main() {
 			application.NewService(claudeSettings),
 			application.NewService(codexSettings),
 			application.NewService(geminiSettings),
+			application.NewService(openaiSettings),
 			application.NewService(logService),
 			application.NewService(appSettings),
 			application.NewService(mcpService),

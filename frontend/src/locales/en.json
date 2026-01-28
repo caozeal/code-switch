@@ -66,6 +66,7 @@
         "hostClaude": "Host Claude Code",
         "hostCodex": "Host Codex",
         "hostGemini": "Host Gemini",
+        "hostOpenAI": "Host OpenAI",
         "tooltip": "Host API access via local relay to unify management of keys and quotas.",
         "statusOn": "Managed",
         "statusOff": "Not managed"

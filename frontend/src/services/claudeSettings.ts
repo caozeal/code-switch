@@ -1,28 +1,26 @@
-import { Call } from '@wailsio/runtime'
+import * as ClaudeSettings from '../../bindings/codeswitch/services/claudesettingsservice'
+import * as CodexSettings from '../../bindings/codeswitch/services/codexsettingsservice'
+import * as GeminiSettings from '../../bindings/codeswitch/services/geminisettingsservice'
+import * as OpenAISettings from '../../bindings/codeswitch/services/openaisettingsservice'
 import type { ClaudeProxyStatus } from '../../bindings/codeswitch/services/models'
 
-type Platform = 'claude' | 'codex' | 'gemini'
+type Platform = 'claude' | 'codex' | 'gemini' | 'openai'
 
-const serviceNames: Record<Platform, string> = {
-  claude: 'codeswitch/services.ClaudeSettingsService',
-  codex: 'codeswitch/services.CodexSettingsService',
-  gemini: 'codeswitch/services.GeminiSettingsService',
-}
-
-const callByPlatform = async <T = unknown>(platform: Platform, method: string, payload?: any[]): Promise<T> => {
-  const service = serviceNames[platform]
-  const args = payload ?? []
-  return Call.ByName(`${service}.${method}`, ...args)
+const services: Record<Platform, any> = {
+  claude: ClaudeSettings,
+  codex: CodexSettings,
+  gemini: GeminiSettings,
+  openai: OpenAISettings,
 }
 
 export const fetchProxyStatus = async (platform: Platform): Promise<ClaudeProxyStatus> => {
-  return callByPlatform<ClaudeProxyStatus>(platform, 'ProxyStatus')
+  return services[platform].ProxyStatus()
 }
 
 export const enableProxy = async (platform: Platform): Promise<void> => {
-  await callByPlatform(platform, 'EnableProxy')
+  await services[platform].EnableProxy()
 }
 
 export const disableProxy = async (platform: Platform): Promise<void> => {
-  await callByPlatform(platform, 'DisableProxy')
+  await services[platform].DisableProxy()
 }

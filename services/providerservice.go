@@ -83,6 +83,8 @@ func providerFilePath(kind string) (string, error) {
 		filename = "codex.json"
 	case "gemini":
 		filename = "gemini.json"
+	case "openai":
+		filename = "openai.json"
 	default:
 		return "", fmt.Errorf("unknown provider type: %s", kind)
 	}

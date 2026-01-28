@@ -538,33 +538,39 @@ const proxyStates = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
   gemini: false,
+  openai: false,
 })
 const proxyBusy = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
   gemini: false,
+  openai: false,
 })
 
 const providerStatsMap = reactive<Record<ProviderTab, Record<string, ProviderDailyStat>>>({
   claude: {},
   codex: {},
   gemini: {},
+  openai: {},
 } as Record<ProviderTab, Record<string, ProviderDailyStat>>)
 const providerStatsLoading = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
   gemini: false,
+  openai: false,
 } as Record<ProviderTab, boolean>)
 const providerStatsLoaded = reactive<Record<ProviderTab, boolean>>({
   claude: false,
   codex: false,
   gemini: false,
+  openai: false,
 } as Record<ProviderTab, boolean>)
 
 const providerHistoryMap = reactive<Record<ProviderTab, Record<string, number[]>>>({
   claude: {},
   codex: {},
   gemini: {},
+  openai: {},
 } as Record<ProviderTab, Record<string, number[]>>)
 
 let providerStatsTimer: number | undefined
@@ -831,6 +837,7 @@ const tabs = [
   { id: 'claude', label: 'Claude Code' },
   { id: 'codex', label: 'Codex' },
   { id: 'gemini', label: 'Gemini' },
+  { id: 'openai', label: 'OpenAI' },
 ] as const
 type ProviderTab = (typeof tabs)[number]['id']
 const providerTabIds = tabs.map((tab) => tab.id) as ProviderTab[]
@@ -839,6 +846,7 @@ const cards = reactive<Record<ProviderTab, AutomationCard[]>>({
   claude: createAutomationCards(automationCardGroups.claude),
   codex: createAutomationCards(automationCardGroups.codex),
   gemini: createAutomationCards(automationCardGroups.gemini),
+  openai: createAutomationCards(automationCardGroups.openai),
 })
 const draggingId = ref<number | null>(null)
 
@@ -860,13 +868,16 @@ const loadProvidersFromDisk = async () => {
   for (const tab of providerTabIds) {
     try {
       const saved = await LoadProviders(tab)
-      if (Array.isArray(saved)) {
+      // 只有在明确收到数组且有内容时才替换当前状态
+      if (Array.isArray(saved) && saved.length > 0) {
         replaceProviders(tab, saved as AutomationCard[])
-      } else {
+      } else if (saved === null) {
+        // 只有明确文件不存在 (null) 时，才考虑持久化默认值
         await persistProviders(tab)
       }
     } catch (error) {
-      console.error('Failed to load providers', error)
+      // 如果接口报错 (如 422)，保持当前 UI 状态，但绝不调用 persistProviders 覆盖文件
+      console.error(`[Critical] Failed to load providers for ${tab} via API:`, error)
     }
   }
 }
@@ -1067,11 +1078,14 @@ onUnmounted(() => {
 const selectedIndex = ref(0)
 const activeTab = computed<ProviderTab>(() => tabs[selectedIndex.value]?.id ?? tabs[0].id)
 const activeCards = computed(() => cards[activeTab.value] ?? [])
-const currentProxyLabel = computed(() =>
-  activeTab.value === 'claude'
-    ? t('components.main.relayToggle.hostClaude')
-    : t('components.main.relayToggle.hostCodex')
-)
+const currentProxyLabel = computed(() => {
+  switch (activeTab.value) {
+    case 'claude': return t('components.main.relayToggle.hostClaude')
+    case 'codex': return t('components.main.relayToggle.hostCodex')
+    case 'gemini': return t('components.main.relayToggle.hostGemini')
+    default: return t('components.main.relayToggle.hostOpenAI')
+  }
+})
 const activeProxyState = computed(() => proxyStates[activeTab.value])
 const activeProxyBusy = computed(() => proxyBusy[activeTab.value])
 

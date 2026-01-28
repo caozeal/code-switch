@@ -90,7 +90,7 @@ func (prs *ProviderRelayService) Start() error {
 func (prs *ProviderRelayService) validateConfig() []string {
 	warnings := make([]string, 0)
 
-	for _, kind := range []string{"claude", "codex", "gemini"} {
+	for _, kind := range []string{"claude", "codex", "gemini", "openai"} {
 		providers, err := prs.providerService.LoadProviders(kind)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("[%s] 加载配置失败: %v", kind, err))
@@ -144,6 +144,7 @@ func (prs *ProviderRelayService) registerRoutes(router gin.IRouter) {
 	router.POST("/v1/messages", prs.proxyHandler("claude", "/v1/messages"))
 	router.POST("/responses", prs.proxyHandler("codex", "/responses"))
 	router.POST("/v1beta/models/:model/*action", prs.proxyHandler("gemini", ""))
+	router.POST("/v1/chat/completions", prs.proxyHandler("openai", "/v1/chat/completions"))
 }
 
 func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.HandlerFunc {
@@ -325,6 +326,8 @@ func (prs *ProviderRelayService) forwardRequest(
 	switch kind {
 	case "gemini":
 		headers["x-goog-api-key"] = provider.APIKey
+	case "openai":
+		headers["Authorization"] = fmt.Sprintf("Bearer %s", provider.APIKey)
 	default:
 		headers["Authorization"] = fmt.Sprintf("Bearer %s", provider.APIKey)
 	}
@@ -553,6 +556,9 @@ func ReqeustLogHook(c *gin.Context, kind string, usage *ReqeustLog) func(data []
 		if kind == "gemini" {
 			parserFn = GeminiParseTokenUsageFromResponse
 		}
+		if kind == "openai" {
+			parserFn = OpenAIParseTokenUsageFromResponse
+		}
 		parseEventPayload(payload, parserFn, usage)
 
 		return true, data
@@ -618,6 +624,12 @@ func GeminiParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	// Gemini API 通常在响应中包含 usage 字段
 	usage.InputTokens += int(gjson.Get(data, "usageMetadata.promptTokenCount").Int())
 	usage.OutputTokens += int(gjson.Get(data, "usageMetadata.candidatesTokenCount").Int())
+}
+
+func OpenAIParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
+	usage.InputTokens += int(gjson.Get(data, "usage.prompt_tokens").Int())
+	usage.OutputTokens += int(gjson.Get(data, "usage.completion_tokens").Int())
+	usage.ReasoningTokens += int(gjson.Get(data, "usage.completion_tokens_details.reasoning_tokens").Int())
 }
 
 // ReplaceModelInRequestBody 替换请求体中的模型名
