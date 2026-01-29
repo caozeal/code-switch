@@ -796,8 +796,19 @@ const isProviderPaused = (card: AutomationCard) => {
 }
 
 const togglePause = async (card: AutomationCard) => {
+  const originalPausedUntil = card.pausedUntil
+  const currentlyPaused = isProviderPaused(card)
+  const nextPausedState = !currentlyPaused
+  
+  // Optimistic update
+  if (!nextPausedState) {
+    card.pausedUntil = undefined
+  } else {
+    card.pausedUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+  }
+
   try {
-    if (isProviderPaused(card)) {
+    if (currentlyPaused) {
       await PauseProvider(activeTab.value, card.id, -1)
     } else {
       await PauseProvider(activeTab.value, card.id, 10)
@@ -805,6 +816,9 @@ const togglePause = async (card: AutomationCard) => {
     await loadProvidersFromDisk()
   } catch (error) {
     console.error('Failed to toggle pause', error)
+    // Revert on error
+    card.pausedUntil = originalPausedUntil
+    await loadProvidersFromDisk()
   }
 }
 
