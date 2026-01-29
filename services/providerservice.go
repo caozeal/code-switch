@@ -98,15 +98,22 @@ func (ps *ProviderService) SaveProviders(kind string, providers []Provider) erro
 }
 
 func (ps *ProviderService) saveProvidersLocked(kind string, providers []Provider) error {
+	fmt.Printf("[ProviderService] SaveProviders called: kind=%s, count=%d\n", kind, len(providers))
+
 	path, err := providerFilePath(kind)
 	if err != nil {
+		fmt.Printf("[ProviderService] Error getting file path: %v\n", err)
 		return err
 	}
+	fmt.Printf("[ProviderService] Target file path: %s\n", path)
 
 	existingProviders, err := ps.LoadProviders(kind)
 	if err != nil {
+		fmt.Printf("[ProviderService] Error loading existing providers: %v\n", err)
 		return err
 	}
+	fmt.Printf("[ProviderService] Loaded %d existing providers\n", len(existingProviders))
+
 	nameByID := make(map[int]string, len(existingProviders))
 	for _, p := range existingProviders {
 		nameByID[p.ID] = p.Name
@@ -140,9 +147,15 @@ func (ps *ProviderService) saveProvidersLocked(kind string, providers []Provider
 
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		fmt.Printf("[ProviderService] Error writing temp file: %v\n", err)
 		return err
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, path); err != nil {
+		fmt.Printf("[ProviderService] Error renaming temp file: %v\n", err)
+		return err
+	}
+	fmt.Printf("[ProviderService] Successfully saved %d providers to %s\n", len(providers), path)
+	return nil
 }
 
 func (ps *ProviderService) LoadProviders(kind string) ([]Provider, error) {
