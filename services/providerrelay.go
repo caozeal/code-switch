@@ -237,19 +237,10 @@ func (prs *ProviderRelayService) proxyHandler(kind string, endpoint string) gin.
 			effectiveModel := provider.GetEffectiveModel(requestedModel)
 
 			currentBodyBytes := bodyBytes
-			if kind == "openai" && isStream {
-				if !gjson.GetBytes(currentBodyBytes, "stream_options").Exists() {
-					newBody, err := sjson.SetBytes(currentBodyBytes, "stream_options", map[string]interface{}{"include_usage": true})
-					if err == nil {
-						currentBodyBytes = newBody
-					}
-				}
-			}
-
 			if effectiveModel != requestedModel && requestedModel != "" {
 				fmt.Printf("[INFO]   Provider %s 映射模型: %s -> %s\n", provider.Name, requestedModel, effectiveModel)
 
-				modifiedBody, err := ReplaceModelInRequestBody(currentBodyBytes, effectiveModel)
+				modifiedBody, err := ReplaceModelInRequestBody(bodyBytes, effectiveModel)
 				if err != nil {
 					fmt.Printf("[ERROR]   替换模型名失败: %v\n", err)
 					lastErr = err
@@ -345,7 +336,7 @@ func (prs *ProviderRelayService) forwardRequest(
 		headers["Accept"] = "application/json"
 	}
 
-	requestLog := &RequestLog{
+	requestLog := &ReqeustLog{
 		Platform: kind,
 		Provider: provider.Name,
 		Model:    model,
@@ -394,7 +385,7 @@ func (prs *ProviderRelayService) forwardRequest(
 	requestLog.HttpCode = status
 
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
-		_, copyErr := resp.ToHttpResponseWriter(c.Writer, RequestLogHook(c, kind, requestLog))
+		_, copyErr := resp.ToHttpResponseWriter(c.Writer, ReqeustLogHook(c, kind, requestLog))
 		if copyErr != nil {
 			requestLog.ErrorMessage = truncateLogValue(copyErr.Error(), maxUpstreamErrorBodyBytes)
 		}
@@ -554,7 +545,7 @@ func ensureRequestLogTableWithDB(db *sql.DB) error {
 	return nil
 }
 
-func RequestLogHook(c *gin.Context, kind string, usage *RequestLog) func(data []byte) (bool, []byte) { // SSE 钩子：累计字节和解析 token 用量
+func ReqeustLogHook(c *gin.Context, kind string, usage *ReqeustLog) func(data []byte) (bool, []byte) { // SSE 钩子：累计字节和解析 token 用量
 	return func(data []byte) (bool, []byte) {
 		payload := strings.TrimSpace(string(data))
 
@@ -574,28 +565,17 @@ func RequestLogHook(c *gin.Context, kind string, usage *RequestLog) func(data []
 	}
 }
 
-func parseEventPayload(payload string, parser func(string, *RequestLog), usage *RequestLog) {
+func parseEventPayload(payload string, parser func(string, *ReqeustLog), usage *ReqeustLog) {
 	lines := strings.Split(payload, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
 		if strings.HasPrefix(line, "data:") {
-			data := strings.TrimPrefix(line, "data:")
-			data = strings.TrimSpace(data)
-			if data == "[DONE]" {
-				continue
-			}
-			parser(data, usage)
-		} else if gjson.Valid(line) {
-			parser(line, usage)
+			parser(strings.TrimPrefix(line, "data: "), usage)
 		}
 	}
 }
 
-
-type RequestLog struct {
+type ReqeustLog struct {
 	ID                int64   `json:"id"`
 	Platform          string  `json:"platform"` // claude code or codex
 	Model             string  `json:"model"`
@@ -621,7 +601,7 @@ type RequestLog struct {
 }
 
 // claude code usage parser
-func ClaudeCodeParseTokenUsageFromResponse(data string, usage *RequestLog) {
+func ClaudeCodeParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	usage.InputTokens += int(gjson.Get(data, "message.usage.input_tokens").Int())
 	usage.OutputTokens += int(gjson.Get(data, "message.usage.output_tokens").Int())
 	usage.CacheCreateTokens += int(gjson.Get(data, "message.usage.cache_creation_input_tokens").Int())
@@ -632,20 +612,21 @@ func ClaudeCodeParseTokenUsageFromResponse(data string, usage *RequestLog) {
 }
 
 // codex usage parser
-func CodexParseTokenUsageFromResponse(data string, usage *RequestLog) {
+func CodexParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	usage.InputTokens += int(gjson.Get(data, "response.usage.input_tokens").Int())
 	usage.OutputTokens += int(gjson.Get(data, "response.usage.output_tokens").Int())
 	usage.CacheReadTokens += int(gjson.Get(data, "response.usage.input_tokens_details.cached_tokens").Int())
 	usage.ReasoningTokens += int(gjson.Get(data, "response.usage.output_tokens_details.reasoning_tokens").Int())
+	fmt.Println("data ---->", data, fmt.Sprintf("%v", usage))
 }
 
-func GeminiParseTokenUsageFromResponse(data string, usage *RequestLog) {
+func GeminiParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	// Gemini API 通常在响应中包含 usage 字段
 	usage.InputTokens += int(gjson.Get(data, "usageMetadata.promptTokenCount").Int())
 	usage.OutputTokens += int(gjson.Get(data, "usageMetadata.candidatesTokenCount").Int())
 }
 
-func OpenAIParseTokenUsageFromResponse(data string, usage *RequestLog) {
+func OpenAIParseTokenUsageFromResponse(data string, usage *ReqeustLog) {
 	usage.InputTokens += int(gjson.Get(data, "usage.prompt_tokens").Int())
 	usage.OutputTokens += int(gjson.Get(data, "usage.completion_tokens").Int())
 	usage.ReasoningTokens += int(gjson.Get(data, "usage.completion_tokens_details.reasoning_tokens").Int())

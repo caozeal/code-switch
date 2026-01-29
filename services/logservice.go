@@ -26,7 +26,7 @@ func NewLogService() *LogService {
 	return &LogService{pricing: svc}
 }
 
-func (ls *LogService) ListRequestLogs(platform string, provider string, startTime string, endTime string, limit int) ([]RequestLog, error) {
+func (ls *LogService) ListRequestLogs(platform string, provider string, startTime string, endTime string, limit int) ([]ReqeustLog, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -54,9 +54,9 @@ func (ls *LogService) ListRequestLogs(platform string, provider string, startTim
 	if err != nil {
 		return nil, err
 	}
-	logs := make([]RequestLog, 0, len(records))
+	logs := make([]ReqeustLog, 0, len(records))
 	for _, record := range records {
-		logEntry := RequestLog{
+		logEntry := ReqeustLog{
 			ID:                record.GetInt64("id"),
 			Platform:          record.GetString("platform"),
 			Model:             record.GetString("model"),
@@ -433,7 +433,7 @@ func (ls *LogService) ProviderDailyStats(platform string) ([]ProviderDailyStat, 
 	return stats, nil
 }
 
-func (ls *LogService) decorateCost(logEntry *RequestLog) {
+func (ls *LogService) decorateCost(logEntry *ReqeustLog) {
 	if ls == nil || ls.pricing == nil || logEntry == nil {
 		return
 	}
