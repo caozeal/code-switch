@@ -52,9 +52,16 @@ package_macos_arch() {
   MAC_ZIPS+=("$zip_path")
 }
 
+if ! command -v wails3 >/dev/null 2>&1; then
+  echo "wails3 is required. Install from https://v3.wails.io/" >&2
+  exit 1
+fi
+
 perl -0pi -e 's/const\s+AppVersion\s*=\s*"[^"]*"/const AppVersion = "'"$TAG"'"/' version_service.go
 
-yq -i '.info.version = "'"$VERSION_VALUE"'"' "$CONFIG_FILE"
+# Replace yq with perl to update info.version in config.yml
+# We search for the info: block and replace the version line within it
+perl -i -pe 'if (/^info:/ .. /^[^\s]/) { s/(\s+version:\s*)"[^"]*"/${1}"'"$VERSION_VALUE"'"/ }' "$CONFIG_FILE"
 
 wails3 task common:update:build-assets
 for arch in "${MAC_ARCHS[@]}"; do
