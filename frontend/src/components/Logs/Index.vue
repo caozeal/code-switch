@@ -9,13 +9,15 @@
       
       <div class="header-center">
         <div class="header-filters date-range-picker-wrapper">
-           <VueDatePicker 
-            v-model="dateRange" 
-            range 
+           <VueDatePicker
+            v-model="dateRange"
+            range
+            :time-config="{ enableTimePicker: false }"
             :enable-time-picker="false"
             :auto-apply="true"
             :clearable="false"
-            format="yyyy-MM-dd"
+            model-type="yyyy-MM-dd"
+            :formats="{ input: 'yyyy-MM-dd' }"
             input-class-name="mac-datepicker-input"
             menu-class-name="mac-datepicker-menu"
            />
@@ -176,10 +178,14 @@ Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, L
 const { t } = useI18n()
 const router = useRouter()
 
-const formatDateOnly = (date: Date) => {
+const formatDateOnly = (date: any) => {
+  if (!date) return ''
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return ''
   const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
 
 const formatStartTime = (val: string) => {
   if (!val) return ''
@@ -205,12 +211,12 @@ const filters = reactive({
   endTime: formatDateOnly(endTimeDefault),
 })
 
-const dateRange = ref([startTimeDefault, endTimeDefault])
+const dateRange = ref([formatDateOnly(startTimeDefault), formatDateOnly(endTimeDefault)])
 
 watch(dateRange, (newRange) => {
   if (newRange && newRange[0] && newRange[1]) {
-    filters.startTime = formatDateOnly(newRange[0])
-    filters.endTime = formatDateOnly(newRange[1])
+    filters.startTime = newRange[0]
+    filters.endTime = newRange[1]
   }
 })
 const page = ref(1)
@@ -627,10 +633,8 @@ watch(
   async () => {
     // Sync dateRange if filters change externally (though mainly driven by dateRange)
     if (filters.startTime && filters.endTime) {
-       const start = new Date(filters.startTime)
-       const end = new Date(filters.endTime)
-       if (dateRange.value[0]?.getTime() !== start.getTime() || dateRange.value[1]?.getTime() !== end.getTime()) {
-          dateRange.value = [start, end]
+       if (dateRange.value[0] !== filters.startTime || dateRange.value[1] !== filters.endTime) {
+          dateRange.value = [filters.startTime, filters.endTime]
        }
     }
 
