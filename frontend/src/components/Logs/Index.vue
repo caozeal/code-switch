@@ -15,7 +15,7 @@
             :time-config="{ enableTimePicker: false }"
             :enable-time-picker="false"
             :auto-apply="true"
-            :clearable="false"
+            :clearable="true"
             model-type="yyyy-MM-dd"
             :formats="{ input: 'yyyy-MM-dd' }"
             input-class-name="mac-datepicker-input"
@@ -686,74 +686,150 @@ onUnmounted(() => {
 
 :deep(.dp__input_wrap) {
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.05); /* Match previous header-filters bg */
+  background: color-mix(in srgb, var(--mac-surface-strong) 40%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--mac-border);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 4px 12px;
+  box-shadow: 0 4px 24px -12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 :deep(.dp__input_wrap:hover) {
-  background: rgba(148, 163, 184, 0.1);
+  background: color-mix(in srgb, var(--mac-surface-strong) 60%, transparent);
   border-color: var(--mac-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mac-accent) 20%, transparent),
+              0 8px 32px -12px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.mac-datepicker-input) {
   background: transparent;
   border: none;
   font-size: 0.9rem;
+  font-weight: 500;
   font-family: var(--mac-font);
   color: var(--mac-text);
   padding: 0;
-  height: 24px;
+  height: 28px;
   text-align: center;
-  width: 210px; /* Adjust as needed */
+  width: 220px;
   box-shadow: none;
 }
 
+:deep(.dp__input.mac-datepicker-input) {
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: inherit;
+}
+
+:deep(.dp__input.mac-datepicker-input:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:deep(.dp__input_readonly),
+:deep(.dp__input_reg) {
+  border: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 :deep(.dp__input_icon) {
-   display: none; /* Hide default icon for cleaner look, or style it if desired */
+   display: none;
 }
 
 :deep(.dp__clear_icon) {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mac-text-secondary);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+:deep(.dp__clear_icon:hover) {
+  opacity: 1;
+  color: var(--mac-accent);
 }
 
 /* Menu Customization */
 :deep(.mac-datepicker-menu) {
   font-family: var(--mac-font);
-  border-radius: 12px;
-  border: 1px solid var(--mac-border);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72),
+    rgba(255, 255, 255, 0.35)
+  ) !important;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  box-shadow: 0 20px 40px -20px rgba(15, 23, 42, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 8px;
+  z-index: 99999 !important;
+}
+
+html.dark :deep(.mac-datepicker-menu) {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.75),
+    rgba(15, 23, 42, 0.35)
+  ) !important;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(148, 163, 184, 0.2);
 }
 
 :deep(.dp__theme_light) {
-  --dp-background-color: var(--mac-surface-strong);
+  --dp-background-color: var(--mac-surface);
   --dp-text-color: var(--mac-text);
   --dp-hover-color: rgba(148, 163, 184, 0.1);
   --dp-hover-text-color: var(--mac-text);
   --dp-hover-icon-color: var(--mac-text);
   --dp-primary-color: var(--mac-accent);
   --dp-primary-text-color: #fff;
-  --dp-secondary-color: #c0c4cc;
+  --dp-secondary-color: var(--mac-text-secondary);
   --dp-border-color: var(--mac-border);
   --dp-menu-border-color: var(--mac-border);
   --dp-border-color-hover: var(--mac-accent);
-  --dp-disabled-color: #f6f7f9;
-  --dp-scroll-bar-background: #f3f3f3;
-  --dp-scroll-bar-color: #959595;
-  --dp-success-color: #76d275;
-  --dp-success-color-disabled: #a3d9b1;
-  --dp-icon-color: #959595;
-  --dp-danger-color: #ff6f60;
-  --dp-marker-color: #ff6f60;
-  --dp-tooltip-color: #fafafa;
-  --dp-disabled-color-text: #8e8e8e;
-  --dp-highlight-color: rgb(25 118 210 / 10%);
+  --dp-disabled-color: rgba(148, 163, 184, 0.05);
+  --dp-scroll-bar-background: transparent;
+  --dp-scroll-bar-color: var(--mac-text-secondary);
+  --dp-success-color: #34d399;
+  --dp-success-color-disabled: #a7f3d0;
+  --dp-icon-color: var(--mac-text-secondary);
+  --dp-danger-color: #f87171;
+  --dp-marker-color: #f87171;
+  --dp-tooltip-color: var(--mac-surface-strong);
+  --dp-disabled-color-text: var(--mac-text-secondary);
+  --dp-highlight-color: color-mix(in srgb, var(--mac-accent) 15%, transparent);
+}
+
+:deep(.dp__cell_inner) {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+:deep(.dp__range_between) {
+  background: color-mix(in srgb, var(--mac-accent) 10%, transparent) !important;
+}
+
+:deep(.dp__active_date), :deep(.dp__range_start), :deep(.dp__range_end) {
+  background: var(--mac-accent) !important;
+  border-radius: 8px !important;
 }
 
 html.dark :deep(.dp__theme_light) {
-   --dp-background-color: var(--mac-surface);
-   /* Re-map to dark variables if needed, though vue-datepicker has a dark theme mode too */
+   --dp-background-color: transparent;
 }
 
 .logs-summary {
