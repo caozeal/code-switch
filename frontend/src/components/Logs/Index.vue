@@ -761,32 +761,68 @@ onUnmounted(() => {
 }
 
 /* Menu Customization */
-:deep(.mac-datepicker-menu) {
-  font-family: var(--mac-font);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.72),
-    rgba(255, 255, 255, 0.35)
-  ) !important;
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  box-shadow: 0 20px 40px -20px rgba(15, 23, 42, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 8px;
-  z-index: 99999 !important;
+/* 修复父元素的 transform 导致 backdrop-filter 失效的问题 */
+:deep(.dp__menu_wrapper),
+:deep(.dp__outer_menu_wrap) {
+  isolation: isolate;
 }
 
-html.dark :deep(.mac-datepicker-menu) {
+/* 亮色主题磨砂玻璃效果 */
+:deep(.mac-datepicker-menu),
+:deep(.dp__menu.dp__theme_light) {
+  font-family: var(--mac-font);
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  --dp-background-color: rgba(255, 255, 255, 0.1);
+  --dp-text-color: #0f172a;
+  --dp-hover-text-color: #0f172a;
+  --dp-secondary-color: #64748b;
+  --dp-icon-color: #64748b;
+  /* 关键：只用纯色背景，不用渐变，让 backdrop-filter 的模糊效果可见 */
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow: 0 30px 70px -30px rgba(15, 23, 42, 0.35),
+    0 10px 20px -14px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  padding: 8px;
+  z-index: 99999 !important;
+  /* 确保创建独立的层叠上下文 */
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+:deep(.dp__menu.dp__theme_light .dp__menu_inner),
+:deep(.dp__menu.dp__theme_light .dp__menu_content),
+:deep(.dp__menu.dp__theme_light .dp__instance_calendar) {
+  background: transparent !important;
+}
+
+/* 暗色主题磨砂玻璃效果 */
+html.dark :deep(.mac-datepicker-menu),
+:deep(.dp__menu.dp__theme_dark) {
   border-color: rgba(148, 163, 184, 0.35);
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.75),
-    rgba(15, 23, 42, 0.35)
-  ) !important;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(148, 163, 184, 0.2);
+  --dp-background-color: rgba(15, 23, 42, 0.1);
+  --dp-text-color: #f8fafc;
+  --dp-hover-text-color: #f8fafc;
+  --dp-secondary-color: rgba(248, 250, 252, 0.7);
+  --dp-icon-color: rgba(248, 250, 252, 0.8);
+  /* 关键：只用纯色背景，不用渐变，让 backdrop-filter 的模糊效果可见 */
+  background-color: rgba(15, 23, 42, 0.1) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  box-shadow: 0 28px 60px -26px rgba(0, 0, 0, 0.75),
+    0 10px 20px -14px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(148, 163, 184, 0.3) !important;
+  /* 确保创建独立的层叠上下文 */
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+:deep(.dp__menu.dp__theme_dark .dp__menu_inner),
+:deep(.dp__menu.dp__theme_dark .dp__menu_content),
+:deep(.dp__menu.dp__theme_dark .dp__instance_calendar) {
+  background: transparent !important;
 }
 
 :deep(.dp__theme_light) {
@@ -828,9 +864,6 @@ html.dark :deep(.mac-datepicker-menu) {
   border-radius: 8px !important;
 }
 
-html.dark :deep(.dp__theme_light) {
-   --dp-background-color: transparent;
-}
 
 .logs-summary {
   display: grid;
